@@ -56,7 +56,7 @@ export function ContactsListPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Contacts</h1>
           <p className="text-sm text-muted-foreground">Track leads and customers in one place.</p>
@@ -78,7 +78,11 @@ export function ContactsListPage() {
       />
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        {/* sm:max-w-2xl (not a bare max-w-2xl) -- the base DialogContent sets sm:max-w-sm, and an
+            unprefixed max-w-2xl would only win below the sm breakpoint (where max-w-[calc(100%-2rem)]
+            already handles mobile correctly) while losing to sm:max-w-sm above it, shrinking this
+            two-column form to 384px on tablet/desktop instead of widening it. */}
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add contact</DialogTitle>
           </DialogHeader>

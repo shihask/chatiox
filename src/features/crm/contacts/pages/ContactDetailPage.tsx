@@ -45,11 +45,15 @@ export function ContactDetailPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="min-w-0 truncate text-2xl font-semibold">
           {contact.firstName} {contact.lastName ?? ''}
         </h1>
-        <Button variant="destructive" onClick={() => { setIsDeleteOpen(true); }}>
+        <Button
+          variant="destructive"
+          className="self-start sm:self-auto"
+          onClick={() => { setIsDeleteOpen(true); }}
+        >
           Archive contact
         </Button>
       </div>

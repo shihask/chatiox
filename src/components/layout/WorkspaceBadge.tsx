@@ -6,9 +6,9 @@ export function WorkspaceBadge() {
   if (auth.status !== 'authenticated') return null
 
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <span className="font-medium">{auth.workspace.name}</span>
-      <Badge variant="secondary" className="capitalize">
+    <div className="flex min-w-0 items-center gap-2 text-sm">
+      <span className="truncate font-medium">{auth.workspace.name}</span>
+      <Badge variant="secondary" className="shrink-0 capitalize">
         {auth.role}
       </Badge>
     </div>

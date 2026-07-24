@@ -53,6 +53,7 @@ export function ContactsTable({
       id: 'createdAt',
       header: 'Created',
       cell: (contact) => formatDate(contact.createdAt),
+      className: 'hidden sm:table-cell',
     },
   ]
 

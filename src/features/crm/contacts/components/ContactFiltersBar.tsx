@@ -22,12 +22,12 @@ export function ContactFiltersBar({
   const { data: leadSources } = useLeadSources()
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
       <Input
         placeholder="Search name, phone, email, or tag..."
         value={filters.search}
         onChange={(e) => { onChange({ ...filters, search: e.target.value }); }}
-        className="max-w-xs"
+        className="w-full sm:max-w-xs"
       />
       <Select
         value={filters.leadStatusId ?? 'all'}
@@ -35,7 +35,7 @@ export function ContactFiltersBar({
           { onChange({ ...filters, leadStatusId: value && value !== 'all' ? value : undefined }); }
         }
       >
-        <SelectTrigger className="w-[170px]">
+        <SelectTrigger className="w-full sm:w-[170px]">
           <SelectValue placeholder="Lead status">
             {(value: string) =>
               value === 'all' || !value
@@ -59,7 +59,7 @@ export function ContactFiltersBar({
           { onChange({ ...filters, leadSourceId: value && value !== 'all' ? value : undefined }); }
         }
       >
-        <SelectTrigger className="w-[170px]">
+        <SelectTrigger className="w-full sm:w-[170px]">
           <SelectValue placeholder="Lead source">
             {(value: string) =>
               value === 'all' || !value

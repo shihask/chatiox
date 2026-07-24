@@ -73,7 +73,7 @@ export function ContactForm({
 
   return (
     <form onSubmit={(e) => void submit(e)} className="space-y-6" noValidate>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="firstName">First name</Label>
           <Input id="firstName" {...register('firstName')} />
@@ -123,14 +123,17 @@ export function ContactForm({
         </div>
         {errors.channels?.message && <p className="text-sm text-destructive">{errors.channels.message}</p>}
         {fields.map((field, index) => (
-          <div key={field.id} className="flex items-start gap-2 rounded-md border p-3">
+          <div
+            key={field.id}
+            className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-start sm:gap-2"
+          >
             <Select
               value={watch(`channels.${index}.channelType`)}
               onValueChange={(value) => {
                 if (value) setValue(`channels.${index}.channelType`, value)
               }}
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-full sm:w-[140px]">
                 <SelectValue>{(value: string) => CHANNEL_TYPE_META[value as keyof typeof CHANNEL_TYPE_META].label}</SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -147,27 +150,29 @@ export function ContactForm({
                 <p className="text-sm text-destructive">{errors.channels[index].value.message}</p>
               )}
             </div>
-            <div className="flex items-center gap-1 pt-2">
-              <Switch
-                checked={watch(`channels.${index}.isPrimary`)}
-                onCheckedChange={(checked) => { setValue(`channels.${index}.isPrimary`, checked); }}
-              />
-              <span className="text-xs text-muted-foreground">Primary</span>
+            <div className="flex items-center justify-between gap-2 sm:justify-start sm:pt-2">
+              <div className="flex items-center gap-1">
+                <Switch
+                  checked={watch(`channels.${index}.isPrimary`)}
+                  onCheckedChange={(checked) => { setValue(`channels.${index}.isPrimary`, checked); }}
+                />
+                <span className="text-xs text-muted-foreground">Primary</span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={fields.length === 1}
+                onClick={() => { remove(index); }}
+              >
+                Remove
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={fields.length === 1}
-              onClick={() => { remove(index); }}
-            >
-              Remove
-            </Button>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Lead status</Label>
           <Select
