@@ -1,8 +1,10 @@
 import { config } from '@/lib/config'
 import { tokenStorage } from '@/lib/tokenStorage'
-import type { ApiErrorPayload } from '@/types/dto/envelope'
+import type { ApiErrorPayload, PaginatedResponse } from '@/types/dto/envelope'
 
-const API_PREFIX = '/api/v1'
+// The deployed edge function is named "api"; its entrypoint strips only the "/api" segment
+// and its routes are bare paths (e.g. /auth/signup), so this must match exactly -- no /v1.
+const API_PREFIX = '/api'
 
 export class ApiError extends Error {
   status: number
@@ -64,7 +66,11 @@ async function refreshSession(): Promise<boolean> {
   return true
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+/** Returns the full envelope ({data} or {data, meta}) -- request()/requestPaginated() unwrap it. */
+async function requestRaw<TEnvelope>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<TEnvelope | undefined> {
   const { method = 'GET', body, query, _isRetry } = options
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -81,7 +87,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (response.status === 401 && !_isRetry && path !== '/auth/refresh') {
     const refreshed = await refreshSession()
-    if (refreshed) return request<T>(path, { ...options, _isRetry: true })
+    if (refreshed) return requestRaw<TEnvelope>(path, { ...options, _isRetry: true })
     tokenStorage.clear()
   }
 
@@ -95,14 +101,29 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     )
   }
 
-  if (response.status === 204) return undefined as T
+  if (response.status === 204) return undefined
 
-  const payload = (await response.json()) as { data: T }
-  return payload.data
+  return (await response.json()) as TEnvelope
+}
+
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const payload = await requestRaw<{ data: T }>(path, options)
+  return payload ? payload.data : (undefined as T)
+}
+
+async function requestPaginated<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<PaginatedResponse<T>> {
+  const payload = await requestRaw<PaginatedResponse<T>>(path, options)
+  if (!payload) throw new ApiError(500, 'Expected a paginated response but received no content')
+  return payload
 }
 
 export const apiClient = {
   get: <T>(path: string, query?: RequestOptions['query']) => request<T>(path, { query }),
+  getPaginated: <T>(path: string, query?: RequestOptions['query']) =>
+    requestPaginated<T>(path, { query }),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),

@@ -33,6 +33,9 @@ export default tseslint.config(
       ...jsxA11y.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      // Numeric indices in template literals are the standard way to build react-hook-form
+      // field-array paths (e.g. `channels.${index}.value`) -- safe and common, not worth flagging.
+      '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
     },
   },
   eslintConfigPrettier,
