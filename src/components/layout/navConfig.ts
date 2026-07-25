@@ -64,7 +64,7 @@ export const navConfig: NavEntry[] = [
     ],
   },
   { type: 'link', label: 'Automation', path: '/automation', status: 'coming-soon', icon: Workflow },
-  { type: 'link', label: 'Analytics', path: '/analytics', status: 'coming-soon', icon: BarChart3 },
+  { type: 'link', label: 'Analytics', path: '/analytics', status: 'real', icon: BarChart3 },
   { type: 'link', label: 'Team', path: '/team', status: 'coming-soon', icon: UsersRound },
   { type: 'link', label: 'Billing', path: '/billing', status: 'coming-soon', icon: CreditCard },
   { type: 'link', label: 'Workspace', path: '/workspace', status: 'coming-soon', icon: Building2 },

@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { contactsApi } from '@/api/contactsApi'
 import { ApiError } from '@/api/apiClient'
 import { contactsKeys } from '@/features/crm/contacts/hooks/queryKeys'
+import { analyticsKeys } from '@/features/analytics/hooks/queryKeys'
 import type { ContactDTO, UpdateContactDTO } from '@/features/crm/contacts/types/contact.types'
 import type { ContactFormValues } from '@/features/crm/contacts/schemas/contact.schema'
 
@@ -65,9 +66,11 @@ export function useSaveContactWithChannels() {
       ])
     },
     onSuccess: async (_data, { id }) => {
+      // Lead status/source are editable here, and both feed the analytics aggregates.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: contactsKeys.detail(id) }),
         queryClient.invalidateQueries({ queryKey: contactsKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: analyticsKeys.all }),
       ])
       toast.success('Contact updated')
     },

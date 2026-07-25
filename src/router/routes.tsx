@@ -8,6 +8,7 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { ContactsListPage } from '@/features/crm/contacts/pages/ContactsListPage'
 import { ContactDetailPage } from '@/features/crm/contacts/pages/ContactDetailPage'
 import { TasksListPage } from '@/features/crm/tasks/pages/TasksListPage'
+import { AnalyticsPage } from '@/features/analytics/AnalyticsPage'
 import { ComingSoonPage } from '@/components/feedback/ComingSoonPage'
 
 // Flat route list regardless of src/features/ nesting or Sidebar grouping (see navConfig.ts) --
@@ -93,15 +94,7 @@ export const router = createBrowserRouter([
               />
             ),
           },
-          {
-            path: '/analytics',
-            element: (
-              <ComingSoonPage
-                moduleName="Analytics"
-                features={['Leads by source', 'Lead status distribution', 'Team performance reports']}
-              />
-            ),
-          },
+          { path: '/analytics', element: <AnalyticsPage /> },
           {
             path: '/team',
             element: (

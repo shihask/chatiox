@@ -1,4 +1,3 @@
-// Mirrors supabase/functions/api/dtos/analytics/analytics.dtos.ts -- keep in sync.
 export interface LeadsBySourceRowDTO {
   leadSourceId: string
   leadSourceName: string
