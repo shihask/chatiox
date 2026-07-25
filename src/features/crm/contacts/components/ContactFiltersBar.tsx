@@ -1,3 +1,4 @@
+import { SearchIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -11,6 +12,8 @@ export interface ContactFilters {
   assignedToMe: boolean
 }
 
+const chipTriggerClass = 'h-8 w-full font-label text-[11px] font-medium tracking-wide uppercase sm:w-auto'
+
 export function ContactFiltersBar({
   filters,
   onChange,
@@ -22,20 +25,23 @@ export function ContactFiltersBar({
   const { data: leadSources } = useLeadSources()
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-      <Input
-        placeholder="Search name, phone, email, or tag..."
-        value={filters.search}
-        onChange={(e) => { onChange({ ...filters, search: e.target.value }); }}
-        className="w-full sm:max-w-xs"
-      />
+    <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="relative w-full sm:max-w-xs">
+        <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search contacts..."
+          value={filters.search}
+          onChange={(e) => { onChange({ ...filters, search: e.target.value }); }}
+          className="h-8 bg-background pl-8 text-[12.5px]"
+        />
+      </div>
       <Select
         value={filters.leadStatusId ?? 'all'}
         onValueChange={(value) =>
           { onChange({ ...filters, leadStatusId: value && value !== 'all' ? value : undefined }); }
         }
       >
-        <SelectTrigger className="w-full sm:w-[170px]">
+        <SelectTrigger className={chipTriggerClass}>
           <SelectValue placeholder="Lead status">
             {(value: string) =>
               value === 'all' || !value
@@ -59,7 +65,7 @@ export function ContactFiltersBar({
           { onChange({ ...filters, leadSourceId: value && value !== 'all' ? value : undefined }); }
         }
       >
-        <SelectTrigger className="w-full sm:w-[170px]">
+        <SelectTrigger className={chipTriggerClass}>
           <SelectValue placeholder="Lead source">
             {(value: string) =>
               value === 'all' || !value
@@ -81,6 +87,7 @@ export function ContactFiltersBar({
         type="button"
         variant={filters.assignedToMe ? 'default' : 'outline'}
         size="sm"
+        className="font-label h-8 text-[11px] font-medium tracking-wide uppercase"
         onClick={() => { onChange({ ...filters, assignedToMe: !filters.assignedToMe }); }}
       >
         Assigned to me

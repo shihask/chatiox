@@ -9,8 +9,10 @@ export function LeadStatusBadge({ status }: { status: LeadStatusDTO | null }) {
     <Badge
       variant="outline"
       className={cn(
-        status.isWon && 'border-emerald-600/30 bg-emerald-600/10 text-emerald-700 dark:text-emerald-400',
-        status.isLost && 'border-red-600/30 bg-red-600/10 text-red-700 dark:text-red-400',
+        'font-label text-[10px] font-semibold tracking-wide uppercase',
+        status.isWon && 'border-success/40 bg-success/10 text-success',
+        status.isLost && 'border-destructive/40 bg-destructive/10 text-destructive',
+        !status.isWon && !status.isLost && 'border-primary/30 bg-primary/5 text-primary',
       )}
     >
       {status.name}

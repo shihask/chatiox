@@ -1,16 +1,13 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoginForm } from '@/features/auth/components/LoginForm'
 
 export function LoginPage() {
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Sign in to Chatiox</CardTitle>
-        <CardDescription>Welcome back. Enter your details to continue.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <LoginForm />
-      </CardContent>
-    </Card>
+    <div>
+      <h1 className="text-[27px] font-extrabold tracking-tight text-foreground">Welcome back</h1>
+      <p className="mt-2 mb-8 text-sm text-muted-foreground">
+        Sign in to keep every conversation and contact in one place.
+      </p>
+      <LoginForm />
+    </div>
   )
 }

@@ -13,6 +13,14 @@ export type DomainEvent =
     }
   | { type: 'ContactDeleted'; workspaceId: string; contactId: string; actorUserId: string; occurredAt: string }
   | { type: 'UserSignedUp'; workspaceId: string; userId: string; email: string; occurredAt: string }
+  | {
+      type: 'NoteCreated'
+      workspaceId: string
+      contactId: string
+      noteId: string
+      actorUserId: string
+      occurredAt: string
+    }
 // Pattern to extend once a module is built -- do not pre-add LeadStatusChanged/MessageDelivered/etc. now.
 
 type EventListener = (event: DomainEvent) => void | Promise<void>

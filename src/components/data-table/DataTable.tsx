@@ -46,12 +46,15 @@ export function DataTable<T>({
 
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-lg border bg-card">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="hover:bg-transparent">
               {columns.map((column) => (
-                <TableHead key={column.id} className={column.className}>
+                <TableHead
+                  key={column.id}
+                  className={`text-xs font-semibold text-muted-foreground ${column.className ?? ''}`}
+                >
                   {column.header}
                 </TableHead>
               ))}

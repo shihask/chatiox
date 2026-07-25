@@ -9,6 +9,8 @@ import { ApiError } from '@/api/apiClient'
 import { useAuth } from '@/features/auth/context/useAuth'
 import { loginSchema, type LoginFormValues } from '@/features/auth/schemas/auth.schema'
 
+const fieldLabelClass = 'font-label text-[11px] font-medium tracking-wider text-muted-foreground uppercase'
+
 export function LoginForm() {
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -39,23 +41,41 @@ export function LoginForm() {
           {serverError}
         </p>
       )}
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" type="email" autoComplete="email" {...register('email')} />
+      <div className="space-y-1.5">
+        <Label htmlFor="email" className={fieldLabelClass}>
+          Email
+        </Label>
+        <Input
+          id="email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@business.com"
+          className="h-[42px]"
+          {...register('email')}
+        />
         {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input id="password" type="password" autoComplete="current-password" {...register('password')} />
+      <div className="space-y-1.5">
+        <Label htmlFor="password" className={fieldLabelClass}>
+          Password
+        </Label>
+        <Input
+          id="password"
+          type="password"
+          autoComplete="current-password"
+          placeholder="Enter your password"
+          className="h-[42px]"
+          {...register('password')}
+        />
         {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
       </div>
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? 'Signing in...' : 'Sign in'}
+      <Button type="submit" className="mt-2 h-11 w-full text-[13.5px] font-bold" disabled={isSubmitting}>
+        {isSubmitting ? 'Signing in...' : 'Sign In'}
       </Button>
       <p className="text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{' '}
-        <Link to="/signup" className="font-medium underline underline-offset-4">
-          Create one
+        New to Chatiox?{' '}
+        <Link to="/signup" className="font-semibold text-foreground underline underline-offset-4">
+          Create a workspace
         </Link>
       </p>
     </form>

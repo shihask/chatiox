@@ -9,6 +9,8 @@ import { ApiError } from '@/api/apiClient'
 import { useAuth } from '@/features/auth/context/useAuth'
 import { signupSchema, type SignupFormValues } from '@/features/auth/schemas/auth.schema'
 
+const fieldLabelClass = 'font-label text-[11px] font-medium tracking-wider text-muted-foreground uppercase'
+
 export function SignupForm() {
   const { signup } = useAuth()
   const navigate = useNavigate()
@@ -37,27 +39,53 @@ export function SignupForm() {
           {serverError}
         </p>
       )}
-      <div className="space-y-2">
-        <Label htmlFor="companyName">Workspace name</Label>
-        <Input id="companyName" autoComplete="organization" {...register('companyName')} />
+      <div className="space-y-1.5">
+        <Label htmlFor="companyName" className={fieldLabelClass}>
+          Workspace name
+        </Label>
+        <Input
+          id="companyName"
+          autoComplete="organization"
+          placeholder="e.g. Sunrise Dental Clinic"
+          className="h-[42px]"
+          {...register('companyName')}
+        />
         {errors.companyName && <p className="text-sm text-destructive">{errors.companyName.message}</p>}
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" type="email" autoComplete="email" {...register('email')} />
+      <div className="space-y-1.5">
+        <Label htmlFor="email" className={fieldLabelClass}>
+          Work email
+        </Label>
+        <Input
+          id="email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@business.com"
+          className="h-[42px]"
+          {...register('email')}
+        />
         {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input id="password" type="password" autoComplete="new-password" {...register('password')} />
+      <div className="space-y-1.5">
+        <Label htmlFor="password" className={fieldLabelClass}>
+          Password
+        </Label>
+        <Input
+          id="password"
+          type="password"
+          autoComplete="new-password"
+          placeholder="At least 8 characters"
+          className="h-[42px]"
+          {...register('password')}
+        />
         {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
       </div>
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? 'Creating your workspace...' : 'Create workspace'}
+      <Button type="submit" className="mt-2 h-11 w-full text-[13.5px] font-bold" disabled={isSubmitting}>
+        {isSubmitting ? 'Creating your workspace...' : 'Create Workspace'}
       </Button>
       <p className="text-center text-sm text-muted-foreground">
-        Already have an account?{' '}
-        <Link to="/login" className="font-medium underline underline-offset-4">
+        Already have a workspace?{' '}
+        <Link to="/login" className="font-semibold text-foreground underline underline-offset-4">
           Sign in
         </Link>
       </p>

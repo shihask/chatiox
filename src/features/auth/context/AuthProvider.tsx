@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { authApi } from '@/api/authApi'
 import { tokenStorage } from '@/lib/tokenStorage'
 import { AuthContext, type AuthContextValue, type AuthState } from '@/features/auth/context/AuthContext'
@@ -9,22 +10,11 @@ import type {
   SignupRequestDTO,
 } from '@/features/auth/types/auth.types'
 
-function stateFromSession(session: SessionDTO): AuthState {
-  const membership = session.memberships[0]
-  if (!membership) return { status: 'unauthenticated' }
-  return {
-    status: 'authenticated',
-    user: session.user,
-    workspace: { id: membership.workspaceId, name: membership.workspaceName },
-    role: membership.role,
-  }
-}
-
 function stateFromMemberships(
   user: { id: string; email: string },
   memberships: SessionMembershipDTO[],
+  preferredId?: string | null,
 ): AuthState {
-  const preferredId = tokenStorage.getCurrentWorkspaceId()
   const selected = memberships.find((m) => m.workspaceId === preferredId) ?? memberships[0]
   if (!selected) return { status: 'unauthenticated' }
   return {
@@ -32,7 +22,12 @@ function stateFromMemberships(
     user,
     workspace: { id: selected.workspaceId, name: selected.workspaceName },
     role: selected.role,
+    memberships,
   }
+}
+
+function stateFromSession(session: SessionDTO): AuthState {
+  return stateFromMemberships(session.user, session.memberships, tokenStorage.getCurrentWorkspaceId())
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -49,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const me = await authApi.me()
         if (cancelled) return
-        const next = stateFromMemberships(me.user, me.memberships)
+        const next = stateFromMemberships(me.user, me.memberships, tokenStorage.getCurrentWorkspaceId())
         if (next.status === 'authenticated') tokenStorage.setCurrentWorkspaceId(next.workspace.id)
         setState(next)
       } catch {
@@ -89,7 +84,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const value: AuthContextValue = { ...state, login, signup, logout }
+  const queryClient = useQueryClient()
+
+  const switchWorkspace = useCallback(
+    (workspaceId: string) => {
+      setState((current) => {
+        if (current.status !== 'authenticated') return current
+        const membership = current.memberships.find((m) => m.workspaceId === workspaceId)
+        if (!membership || membership.workspaceId === current.workspace.id) return current
+        tokenStorage.setCurrentWorkspaceId(membership.workspaceId)
+        return {
+          ...current,
+          workspace: { id: membership.workspaceId, name: membership.workspaceName },
+          role: membership.role,
+        }
+      })
+      // Every workspace-scoped query is keyed independently of workspace id today, so switching
+      // workspaces must drop the old workspace's cached data -- otherwise contacts/lead lists would
+      // briefly (or permanently, if not refetched) show the previous workspace's data.
+      void queryClient.invalidateQueries()
+    },
+    [queryClient],
+  )
+
+  const value: AuthContextValue = { ...state, login, signup, logout, switchWorkspace }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

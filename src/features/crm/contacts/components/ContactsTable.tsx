@@ -3,6 +3,7 @@ import { DataTable, type DataTableColumn } from '@/components/data-table/DataTab
 import { ContactChannelBadges } from '@/features/crm/contacts/components/ContactChannelBadges'
 import { LeadStatusBadge } from '@/features/crm/contacts/components/LeadStatusBadge'
 import { formatDate } from '@/lib/date'
+import { avatarClassFor } from '@/lib/avatarColor'
 import type { ContactDTO } from '@/features/crm/contacts/types/contact.types'
 
 export function ContactsTable({
@@ -27,10 +28,18 @@ export function ContactsTable({
   const columns: DataTableColumn<ContactDTO>[] = [
     {
       id: 'name',
-      header: 'Name',
+      header: 'Contact',
       cell: (contact) => (
-        <Link to={`/contacts/${contact.id}`} className="font-medium hover:underline">
-          {contact.firstName} {contact.lastName ?? ''}
+        <Link to={`/contacts/${contact.id}`} className="flex items-center gap-2.5">
+          <span
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${avatarClassFor(contact.id)}`}
+          >
+            {contact.firstName.slice(0, 1)}
+            {contact.lastName?.slice(0, 1) ?? ''}
+          </span>
+          <span className="font-semibold text-foreground hover:underline">
+            {contact.firstName} {contact.lastName ?? ''}
+          </span>
         </Link>
       ),
     },
@@ -48,6 +57,7 @@ export function ContactsTable({
       id: 'leadSource',
       header: 'Lead Source',
       cell: (contact) => contact.leadSource?.name ?? '—',
+      className: 'hidden md:table-cell',
     },
     {
       id: 'createdAt',

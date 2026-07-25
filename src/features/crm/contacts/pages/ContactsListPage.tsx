@@ -1,23 +1,21 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { PlusIcon } from 'lucide-react'
 import { ApiError } from '@/api/apiClient'
 import { useAuth } from '@/features/auth/context/useAuth'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { usePagination } from '@/hooks/usePagination'
 import { ContactFiltersBar, type ContactFilters } from '@/features/crm/contacts/components/ContactFiltersBar'
-import { ContactForm } from '@/features/crm/contacts/components/ContactForm'
 import { ContactsTable } from '@/features/crm/contacts/components/ContactsTable'
+import { useCreateContactDialog } from '@/features/crm/contacts/context/useCreateContactDialog'
 import { useContacts } from '@/features/crm/contacts/hooks/useContacts'
-import { useCreateContact } from '@/features/crm/contacts/hooks/useCreateContact'
-import type { ContactFormValues } from '@/features/crm/contacts/schemas/contact.schema'
 
 export function ContactsListPage() {
   const auth = useAuth()
   const { page, pageSize, setPage, resetPage } = usePagination()
   const [filters, setFilters] = useState<ContactFilters>({ search: '', assignedToMe: false })
   const debouncedSearch = useDebouncedValue(filters.search, 300)
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const createContactDialog = useCreateContactDialog()
 
   const currentUserId = auth.status === 'authenticated' ? auth.user.id : undefined
 
@@ -30,38 +28,24 @@ export function ContactsListPage() {
     assignedToUserId: filters.assignedToMe ? currentUserId : undefined,
   })
 
-  const createContact = useCreateContact()
-
   function handleFiltersChange(next: ContactFilters) {
     setFilters(next)
     resetPage()
-  }
-
-  async function handleCreate(values: ContactFormValues) {
-    await createContact.mutateAsync({
-      firstName: values.firstName,
-      lastName: values.lastName === '' ? undefined : values.lastName,
-      tags: values.tags,
-      channels: values.channels.map((channel) => ({
-        channelType: channel.channelType,
-        value: channel.value,
-        isPrimary: channel.isPrimary,
-      })),
-      leadStatusId: values.leadStatusId,
-      leadSourceId: values.leadSourceId,
-      assignedToUserId: values.assignedToUserId,
-    })
-    setIsCreateOpen(false)
   }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Contacts</h1>
-          <p className="text-sm text-muted-foreground">Track leads and customers in one place.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Contacts</h1>
+          <p className="font-label text-xs text-muted-foreground">
+            {data ? `${String(data.meta.total)} contacts in this workspace` : 'Track leads and customers in one place.'}
+          </p>
         </div>
-        <Button onClick={() => { setIsCreateOpen(true); }}>Add contact</Button>
+        <Button onClick={createContactDialog.open} className="gap-1.5">
+          <PlusIcon className="h-4 w-4" />
+          Add Contact
+        </Button>
       </div>
 
       <ContactFiltersBar filters={filters} onChange={handleFiltersChange} />
@@ -76,23 +60,6 @@ export function ContactsListPage() {
         total={data?.meta.total ?? 0}
         onPageChange={setPage}
       />
-
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        {/* sm:max-w-2xl (not a bare max-w-2xl) -- the base DialogContent sets sm:max-w-sm, and an
-            unprefixed max-w-2xl would only win below the sm breakpoint (where max-w-[calc(100%-2rem)]
-            already handles mobile correctly) while losing to sm:max-w-sm above it, shrinking this
-            two-column form to 384px on tablet/desktop instead of widening it. */}
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Add contact</DialogTitle>
-          </DialogHeader>
-          <ContactForm
-            onSubmit={handleCreate}
-            isSubmitting={createContact.isPending}
-            submitLabel="Create contact"
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
