@@ -7,6 +7,7 @@ import { ProtectedRoute } from '@/router/ProtectedRoute'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { ContactsListPage } from '@/features/crm/contacts/pages/ContactsListPage'
 import { ContactDetailPage } from '@/features/crm/contacts/pages/ContactDetailPage'
+import { TasksListPage } from '@/features/crm/tasks/pages/TasksListPage'
 import { ComingSoonPage } from '@/components/feedback/ComingSoonPage'
 
 // Flat route list regardless of src/features/ nesting or Sidebar grouping (see navConfig.ts) --
@@ -28,15 +29,7 @@ export const router = createBrowserRouter([
           { path: '/', element: <DashboardPage /> },
           { path: '/contacts', element: <ContactsListPage /> },
           { path: '/contacts/:id', element: <ContactDetailPage /> },
-          {
-            path: '/tasks',
-            element: (
-              <ComingSoonPage
-                moduleName="Tasks"
-                features={['Follow-up reminders per contact', 'Due dates & assignees', 'Mark complete from the Contact timeline']}
-              />
-            ),
-          },
+          { path: '/tasks', element: <TasksListPage /> },
           {
             path: '/notes',
             element: (

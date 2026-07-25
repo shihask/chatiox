@@ -42,7 +42,7 @@ export const navConfig: NavEntry[] = [
     label: 'CRM',
     children: [
       { type: 'link', label: 'Contacts', path: '/contacts', status: 'real', icon: Users },
-      { type: 'link', label: 'Tasks', path: '/tasks', status: 'coming-soon', icon: ListChecks },
+      { type: 'link', label: 'Tasks', path: '/tasks', status: 'real', icon: ListChecks },
       { type: 'link', label: 'Notes', path: '/notes', status: 'coming-soon', icon: StickyNote },
     ],
   },

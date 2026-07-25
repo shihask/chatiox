@@ -1,4 +1,3 @@
-// Mirrors supabase/functions/api/dtos/crm/tasks.dtos.ts -- keep in sync.
 export type TaskStatus = 'open' | 'completed' | 'cancelled'
 
 export interface TaskContactSummaryDTO {
@@ -21,27 +20,4 @@ export interface TaskDTO {
   createdBy: string | null
   createdAt: string
   updatedAt: string
-}
-
-export interface CreateTaskDTO {
-  title: string
-  description?: string
-  dueAt?: string
-  assignedToUserId?: string
-}
-
-export interface UpdateTaskDTO {
-  title?: string
-  description?: string | null
-  dueAt?: string | null
-  status?: TaskStatus
-  assignedToUserId?: string | null
-}
-
-export interface ListTasksParams {
-  page?: number
-  pageSize?: number
-  status?: TaskStatus
-  assignedToUserId?: string
-  contactId?: string
 }

@@ -9,6 +9,7 @@ import { LoadingState } from '@/components/feedback/LoadingState'
 import { ComingSoonPage } from '@/components/feedback/ComingSoonPage'
 import { ContactForm } from '@/features/crm/contacts/components/ContactForm'
 import { ContactNotesPanel } from '@/features/crm/contacts/components/ContactNotesPanel'
+import { ContactTasksPanel } from '@/features/crm/tasks/components/ContactTasksPanel'
 import { DeleteContactDialog } from '@/features/crm/contacts/components/DeleteContactDialog'
 import { LeadStatusBadge } from '@/features/crm/contacts/components/LeadStatusBadge'
 import { useContact } from '@/features/crm/contacts/hooks/useContact'
@@ -132,6 +133,7 @@ export function ContactDetailPage() {
             <Tabs defaultValue="details">
               <TabsList className="mb-4">
                 <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="tasks">Tasks</TabsTrigger>
                 <TabsTrigger value="timeline">Timeline</TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
                 <TabsTrigger value="automation">Automation</TabsTrigger>
@@ -143,6 +145,9 @@ export function ContactDetailPage() {
                   isSubmitting={saveContact.isPending}
                   submitLabel="Save changes"
                 />
+              </TabsContent>
+              <TabsContent value="tasks">
+                <ContactTasksPanel contactId={contact.id} />
               </TabsContent>
               <TabsContent value="timeline">
                 <ComingSoonPage

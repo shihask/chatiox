@@ -6,6 +6,7 @@ import type {
 import { routes as authRoutes } from './controllers/auth.routes.ts'
 import { routes as crmContactsRoutes } from './controllers/crm/contacts.routes.ts'
 import { routes as crmNotesRoutes } from './controllers/crm/notes.routes.ts'
+import { routes as crmTasksRoutes } from './controllers/crm/tasks.routes.ts'
 // Future modules: ONE import + ONE array entry, grouped by domain, e.g.
 //   CRM            -> controllers/crm/tasks.routes.ts       -> crmTasksRoutes
 //   Communication  -> controllers/communication/inbox.routes.ts -> communicationInboxRoutes
@@ -42,4 +43,4 @@ export type RouteDefinition =
 // callbacks needs a fourth "webhook" tier (signature-verified, never JWT-authenticated) once a
 // provider is implemented -- see docs/architecture.md and _shared/http/.
 
-export const routes: RouteDefinition[] = [authRoutes, crmContactsRoutes, crmNotesRoutes].flat()
+export const routes: RouteDefinition[] = [authRoutes, crmContactsRoutes, crmNotesRoutes, crmTasksRoutes].flat()
