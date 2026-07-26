@@ -43,7 +43,7 @@ export const navConfig: NavEntry[] = [
     children: [
       { type: 'link', label: 'Contacts', path: '/contacts', status: 'real', icon: Users },
       { type: 'link', label: 'Tasks', path: '/tasks', status: 'real', icon: ListChecks },
-      { type: 'link', label: 'Notes', path: '/notes', status: 'coming-soon', icon: StickyNote },
+      { type: 'link', label: 'Notes', path: '/notes', status: 'real', icon: StickyNote },
     ],
   },
   {

@@ -4,11 +4,9 @@ import type {
   ContactDTO,
   CreateContactChannelDTO,
   CreateContactDTO,
-  CreateNoteDTO,
   LeadSourceDTO,
   LeadStatusDTO,
   ListContactsParams,
-  NoteDTO,
   UpdateContactDTO,
 } from '@/features/crm/contacts/types/contact.types'
 
@@ -43,11 +41,4 @@ export const contactsApi = {
 
   listLeadStatuses: () => apiClient.get<LeadStatusDTO[]>('/lead-statuses'),
   listLeadSources: () => apiClient.get<LeadSourceDTO[]>('/lead-sources'),
-
-  listNotes: (contactId: string) => apiClient.get<NoteDTO[]>(`/contacts/${contactId}/notes`),
-  createNote: (contactId: string, input: CreateNoteDTO) =>
-    apiClient.post<NoteDTO>(`/contacts/${contactId}/notes`, input),
-  removeNote: async (noteId: string): Promise<void> => {
-    await apiClient.delete(`/notes/${noteId}`)
-  },
 }

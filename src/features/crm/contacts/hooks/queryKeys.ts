@@ -15,8 +15,3 @@ export const leadStatusesKeys = {
 export const leadSourcesKeys = {
   all: ['lead-sources'] as const,
 }
-
-export const notesKeys = {
-  all: ['notes'] as const,
-  byContact: (contactId: string) => [...notesKeys.all, contactId] as const,
-}

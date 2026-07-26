@@ -3,17 +3,17 @@ import { Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/features/auth/context/useAuth'
-import { useNotes } from '@/features/crm/contacts/hooks/useNotes'
-import { useCreateNote } from '@/features/crm/contacts/hooks/useCreateNote'
-import { useDeleteNote } from '@/features/crm/contacts/hooks/useDeleteNote'
+import { useContactNotes } from '@/features/crm/notes/hooks/useContactNotes'
+import { useCreateNote } from '@/features/crm/notes/hooks/useCreateNote'
+import { useDeleteNote } from '@/features/crm/notes/hooks/useDeleteNote'
 import { formatRelativeTime } from '@/lib/date'
 
 export function ContactNotesPanel({ contactId }: { contactId: string }) {
   const auth = useAuth()
   const [draft, setDraft] = useState('')
-  const { data: notes, isLoading } = useNotes(contactId)
+  const { data: notes, isLoading } = useContactNotes(contactId)
   const createNote = useCreateNote(contactId)
-  const deleteNote = useDeleteNote(contactId)
+  const deleteNote = useDeleteNote()
 
   async function handleAddNote() {
     if (!draft.trim()) return

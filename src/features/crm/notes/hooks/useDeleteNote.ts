@@ -1,16 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { contactsApi } from '@/api/contactsApi'
+import { notesApi } from '@/api/notesApi'
 import { ApiError } from '@/api/apiClient'
-import { notesKeys } from '@/features/crm/contacts/hooks/queryKeys'
+import { notesKeys } from '@/features/crm/notes/hooks/queryKeys'
 
-export function useDeleteNote(contactId: string) {
+export function useDeleteNote() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (noteId: string) => contactsApi.removeNote(noteId),
+    mutationFn: (id: string) => notesApi.remove(id),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: notesKeys.byContact(contactId) })
+      await queryClient.invalidateQueries({ queryKey: notesKeys.all })
     },
     onError: (error) => {
       toast.error(error instanceof ApiError ? error.message : 'Failed to delete note')

@@ -8,6 +8,7 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { ContactsListPage } from '@/features/crm/contacts/pages/ContactsListPage'
 import { ContactDetailPage } from '@/features/crm/contacts/pages/ContactDetailPage'
 import { TasksListPage } from '@/features/crm/tasks/pages/TasksListPage'
+import { NotesListPage } from '@/features/crm/notes/pages/NotesListPage'
 import { AnalyticsPage } from '@/features/analytics/AnalyticsPage'
 import { WorkspaceSettingsPage } from '@/features/administration/workspace/WorkspaceSettingsPage'
 import { ComingSoonPage } from '@/components/feedback/ComingSoonPage'
@@ -32,15 +33,7 @@ export const router = createBrowserRouter([
           { path: '/contacts', element: <ContactsListPage /> },
           { path: '/contacts/:id', element: <ContactDetailPage /> },
           { path: '/tasks', element: <TasksListPage /> },
-          {
-            path: '/notes',
-            element: (
-              <ComingSoonPage
-                moduleName="Notes"
-                features={['A searchable, workspace-wide notes list', 'Filter notes by contact or author']}
-              />
-            ),
-          },
+          { path: '/notes', element: <NotesListPage /> },
           {
             path: '/inbox',
             element: (

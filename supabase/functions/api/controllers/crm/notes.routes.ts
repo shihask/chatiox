@@ -6,13 +6,19 @@ export const routes: RouteDefinition[] = [
     method: 'GET',
     pattern: new URLPattern({ pathname: '/contacts/:id/notes' }),
     tier: 'workspace',
-    handler: notesController.list,
+    handler: notesController.listByContact,
   },
   {
     method: 'POST',
     pattern: new URLPattern({ pathname: '/contacts/:id/notes' }),
     tier: 'workspace',
-    handler: notesController.create,
+    handler: notesController.createForContact,
+  },
+  {
+    method: 'GET',
+    pattern: new URLPattern({ pathname: '/notes' }),
+    tier: 'workspace',
+    handler: notesController.list,
   },
   {
     method: 'DELETE',
