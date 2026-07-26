@@ -65,6 +65,8 @@ export function mapPostgrestError(error: { code?: string; message: string }): Ap
       return new BadRequestError(error.message)
     case '23503':
       return new ConflictError('This item is still in use and cannot be deleted')
+    case 'P0002':
+      return new NotFoundError(error.message)
     default:
       return new InternalError(error.message, { pgCode: error.code })
   }

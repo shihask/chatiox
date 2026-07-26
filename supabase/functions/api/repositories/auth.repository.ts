@@ -53,6 +53,40 @@ export async function createUserWithWorkspace(
   }
 }
 
+/** Joins an existing workspace via an already-validated invite, instead of provisioning a new one.
+ * Bypasses create_tenant_with_owner() entirely -- a plain insert is enough since there's no slug/
+ * default-lookup-table seeding to do for a workspace that already exists. */
+export async function createUserWithInvite(
+  serviceRoleClient: SupabaseClient,
+  input: { email: string; password: string },
+  invite: { tenantId: string; role: WorkspaceRole; workspaceName: string },
+): Promise<CreatedUserWithWorkspace> {
+  const { data: created, error: createError } = await serviceRoleClient.auth.admin.createUser({
+    email: input.email,
+    password: input.password,
+    email_confirm: true,
+  })
+  if (createError || !created.user) {
+    if (createError?.code === 'email_exists') {
+      throw new ConflictError('An account with this email already exists')
+    }
+    throw new InternalError(createError?.message ?? 'Failed to create user')
+  }
+
+  const { error: membershipError } = await serviceRoleClient
+    .from('tenant_memberships')
+    .insert({ tenant_id: invite.tenantId, user_id: created.user.id, role: invite.role })
+  if (membershipError) throw new InternalError(membershipError.message)
+
+  return {
+    userId: created.user.id,
+    email: created.user.email ?? input.email,
+    workspaceId: invite.tenantId,
+    workspaceName: invite.workspaceName,
+    role: invite.role,
+  }
+}
+
 export async function signInWithPassword(
   anonClient: SupabaseClient,
   input: { email: string; password: string },

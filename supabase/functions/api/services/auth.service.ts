@@ -5,15 +5,43 @@ import {
 } from '../../_shared/supabaseClient.ts'
 import { recordAudit } from '../../_shared/audit.ts'
 import { emit } from '../../_shared/events.ts'
-import { InternalError } from '../../_shared/errors.ts'
+import { BadRequestError, InternalError } from '../../_shared/errors.ts'
 import * as authRepository from '../repositories/auth.repository.ts'
+import * as teamMembersRepository from '../repositories/administration/team-members.repository.ts'
 import { toMeDTO, toSessionDTO } from '../mappers/auth.mapper.ts'
 import type { LoginInput, RefreshInput, SignupInput } from '../schemas/auth.schemas.ts'
 import type { MeDTO, SessionDTO } from '../dtos/auth.dtos.ts'
+import type { CreatedUserWithWorkspace } from '../repositories/auth.repository.ts'
+import type { InviteWithWorkspaceRow } from '../repositories/administration/team-members.repository.ts'
 
 export async function signup(input: SignupInput): Promise<SessionDTO> {
   const serviceRoleClient = createServiceRoleClient()
-  const created = await authRepository.createUserWithWorkspace(serviceRoleClient, input)
+
+  let invite: InviteWithWorkspaceRow | null = null
+  let created: CreatedUserWithWorkspace
+
+  if (input.inviteToken) {
+    invite = await teamMembersRepository.findPendingInviteByToken(serviceRoleClient, input.inviteToken)
+    if (!invite) throw new BadRequestError('This invite link is invalid or has expired')
+    if (new Date(invite.expires_at).getTime() < Date.now()) {
+      throw new BadRequestError('This invite link has expired')
+    }
+    if (invite.email.toLowerCase() !== input.email.toLowerCase()) {
+      throw new BadRequestError('This invite was sent to a different email address')
+    }
+    created = await authRepository.createUserWithInvite(serviceRoleClient, input, {
+      tenantId: invite.tenant_id,
+      role: invite.role,
+      workspaceName: invite.tenants?.name ?? '',
+    })
+  } else {
+    if (!input.companyName) throw new BadRequestError('Workspace name is required')
+    created = await authRepository.createUserWithWorkspace(serviceRoleClient, {
+      email: input.email,
+      password: input.password,
+      companyName: input.companyName,
+    })
+  }
 
   const anonClient = createAnonClient()
   const session = await authRepository.signInWithPassword(anonClient, {
@@ -27,10 +55,14 @@ export async function signup(input: SignupInput): Promise<SessionDTO> {
     role: created.role,
   }
 
+  if (invite) {
+    await teamMembersRepository.acceptInvite(serviceRoleClient, invite.id)
+  }
+
   await recordAudit(serviceRoleClient, {
     workspaceId: created.workspaceId,
     actorUserId: created.userId,
-    action: 'auth.signup',
+    action: invite ? 'auth.signup_via_invite' : 'auth.signup',
     targetType: 'user',
     targetId: created.userId,
   })
@@ -41,6 +73,15 @@ export async function signup(input: SignupInput): Promise<SessionDTO> {
     email: created.email,
     occurredAt: new Date().toISOString(),
   })
+  if (invite) {
+    emit({
+      type: 'TeamMemberJoined',
+      workspaceId: created.workspaceId,
+      userId: created.userId,
+      email: created.email,
+      occurredAt: new Date().toISOString(),
+    })
+  }
 
   return toSessionDTO({
     user: { id: created.userId, email: created.email },

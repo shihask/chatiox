@@ -24,7 +24,9 @@ export function createUserScopedClient(accessToken: string): SupabaseClient {
   })
 }
 
-/** Service-role client: bypasses RLS entirely. Only for signup (creating auth.users). */
+/** Service-role client: bypasses RLS entirely. For signup (creating auth.users), invite
+ * acceptance/preview, and resolving member emails via the Admin API (auth.users isn't exposed
+ * through PostgREST). */
 export function createServiceRoleClient(): SupabaseClient {
   return createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'), {
     auth: { autoRefreshToken: false, persistSession: false },

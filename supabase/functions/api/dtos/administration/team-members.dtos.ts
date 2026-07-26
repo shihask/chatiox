@@ -1,5 +1,4 @@
-// Mirrors supabase/functions/api/dtos/administration/team-members.dtos.ts -- keep in sync.
-export type WorkspaceRole = 'owner' | 'admin' | 'manager' | 'agent'
+import type { WorkspaceRole } from '../../../_shared/http/requestContext.ts'
 
 export interface TeamMemberDTO {
   userId: string
@@ -23,14 +22,5 @@ export interface TeamInviteDTO {
 export interface InvitePreviewDTO {
   workspaceName: string
   email: string
-  role: WorkspaceRole
-}
-
-export interface CreateInviteDTO {
-  email: string
-  role: 'admin' | 'manager' | 'agent'
-}
-
-export interface UpdateMemberRoleDTO {
   role: WorkspaceRole
 }

@@ -23,7 +23,8 @@ export interface MeDTO {
 export interface SignupRequestDTO {
   email: string
   password: string
-  companyName: string
+  companyName?: string
+  inviteToken?: string
 }
 
 export interface LoginRequestDTO {

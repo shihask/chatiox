@@ -8,10 +8,16 @@ import { Label } from '@/components/ui/label'
 import { ApiError } from '@/api/apiClient'
 import { useAuth } from '@/features/auth/context/useAuth'
 import { signupSchema, type SignupFormValues } from '@/features/auth/schemas/auth.schema'
+import type { InvitePreviewDTO } from '@/features/administration/team-members/types/team-member.types'
 
 const fieldLabelClass = 'font-label text-[11px] font-medium tracking-wider text-muted-foreground uppercase'
 
-export function SignupForm() {
+interface SignupFormProps {
+  inviteToken?: string
+  invitePreview?: InvitePreviewDTO
+}
+
+export function SignupForm({ inviteToken, invitePreview }: SignupFormProps) {
   const { signup } = useAuth()
   const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
@@ -20,12 +26,15 @@ export function SignupForm() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<SignupFormValues>({ resolver: zodResolver(signupSchema) })
+  } = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { email: invitePreview?.email ?? '', inviteToken },
+  })
 
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null)
     try {
-      await signup(values)
+      await signup({ ...values, inviteToken })
       void navigate('/', { replace: true })
     } catch (err) {
       setServerError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.')
@@ -39,19 +48,21 @@ export function SignupForm() {
           {serverError}
         </p>
       )}
-      <div className="space-y-1.5">
-        <Label htmlFor="companyName" className={fieldLabelClass}>
-          Workspace name
-        </Label>
-        <Input
-          id="companyName"
-          autoComplete="organization"
-          placeholder="e.g. Sunrise Dental Clinic"
-          className="h-[42px]"
-          {...register('companyName')}
-        />
-        {errors.companyName && <p className="text-sm text-destructive">{errors.companyName.message}</p>}
-      </div>
+      {!invitePreview && (
+        <div className="space-y-1.5">
+          <Label htmlFor="companyName" className={fieldLabelClass}>
+            Workspace name
+          </Label>
+          <Input
+            id="companyName"
+            autoComplete="organization"
+            placeholder="e.g. Sunrise Dental Clinic"
+            className="h-[42px]"
+            {...register('companyName')}
+          />
+          {errors.companyName && <p className="text-sm text-destructive">{errors.companyName.message}</p>}
+        </div>
+      )}
       <div className="space-y-1.5">
         <Label htmlFor="email" className={fieldLabelClass}>
           Work email
@@ -62,6 +73,7 @@ export function SignupForm() {
           autoComplete="email"
           placeholder="you@business.com"
           className="h-[42px]"
+          readOnly={Boolean(invitePreview)}
           {...register('email')}
         />
         {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
@@ -81,7 +93,13 @@ export function SignupForm() {
         {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
       </div>
       <Button type="submit" className="mt-2 h-11 w-full text-[13.5px] font-bold" disabled={isSubmitting}>
-        {isSubmitting ? 'Creating your workspace...' : 'Create Workspace'}
+        {invitePreview
+          ? isSubmitting
+            ? 'Joining...'
+            : 'Join workspace'
+          : isSubmitting
+            ? 'Creating your workspace...'
+            : 'Create Workspace'}
       </Button>
       <p className="text-center text-sm text-muted-foreground">
         Already have a workspace?{' '}

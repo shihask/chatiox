@@ -11,6 +11,7 @@ import { TasksListPage } from '@/features/crm/tasks/pages/TasksListPage'
 import { NotesListPage } from '@/features/crm/notes/pages/NotesListPage'
 import { AnalyticsPage } from '@/features/analytics/AnalyticsPage'
 import { WorkspaceSettingsPage } from '@/features/administration/workspace/WorkspaceSettingsPage'
+import { TeamPage } from '@/features/administration/team-members/TeamPage'
 import { ComingSoonPage } from '@/components/feedback/ComingSoonPage'
 
 // Flat route list regardless of src/features/ nesting or Sidebar grouping (see navConfig.ts) --
@@ -89,15 +90,7 @@ export const router = createBrowserRouter([
             ),
           },
           { path: '/analytics', element: <AnalyticsPage /> },
-          {
-            path: '/team',
-            element: (
-              <ComingSoonPage
-                moduleName="Team"
-                features={['Invite teammates', 'Role-based permissions', 'Manage workspace membership']}
-              />
-            ),
-          },
+          { path: '/team', element: <TeamPage /> },
           {
             path: '/billing',
             element: (
