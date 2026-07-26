@@ -9,6 +9,7 @@ import { ContactsListPage } from '@/features/crm/contacts/pages/ContactsListPage
 import { ContactDetailPage } from '@/features/crm/contacts/pages/ContactDetailPage'
 import { TasksListPage } from '@/features/crm/tasks/pages/TasksListPage'
 import { AnalyticsPage } from '@/features/analytics/AnalyticsPage'
+import { WorkspaceSettingsPage } from '@/features/administration/workspace/WorkspaceSettingsPage'
 import { ComingSoonPage } from '@/components/feedback/ComingSoonPage'
 
 // Flat route list regardless of src/features/ nesting or Sidebar grouping (see navConfig.ts) --
@@ -110,15 +111,7 @@ export const router = createBrowserRouter([
               <ComingSoonPage moduleName="Billing" features={['Subscription & plan management', 'Usage tracking', 'Invoices']} />
             ),
           },
-          {
-            path: '/workspace',
-            element: (
-              <ComingSoonPage
-                moduleName="Workspace"
-                features={['Workspace profile & branding', 'Manage lead statuses & sources', 'General settings']}
-              />
-            ),
-          },
+          { path: '/workspace', element: <WorkspaceSettingsPage /> },
         ],
       },
     ],

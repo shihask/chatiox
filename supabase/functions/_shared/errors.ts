@@ -63,6 +63,8 @@ export function mapPostgrestError(error: { code?: string; message: string }): Ap
       return new ForbiddenError('You do not have permission to perform this action')
     case '22023':
       return new BadRequestError(error.message)
+    case '23503':
+      return new ConflictError('This item is still in use and cannot be deleted')
     default:
       return new InternalError(error.message, { pgCode: error.code })
   }

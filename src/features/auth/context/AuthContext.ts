@@ -32,6 +32,7 @@ export type AuthContextValue = AuthState & {
   signup: (input: SignupRequestDTO) => Promise<void>
   logout: () => Promise<void>
   switchWorkspace: (workspaceId: string) => void
+  renameCurrentWorkspace: (name: string) => void
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

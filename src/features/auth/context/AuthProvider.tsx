@@ -107,7 +107,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [queryClient],
   )
 
-  const value: AuthContextValue = { ...state, login, signup, logout, switchWorkspace }
+  const renameCurrentWorkspace = useCallback((name: string) => {
+    setState((current) => {
+      if (current.status !== 'authenticated') return current
+      return {
+        ...current,
+        workspace: { ...current.workspace, name },
+        memberships: current.memberships.map((m) =>
+          m.workspaceId === current.workspace.id ? { ...m, workspaceName: name } : m,
+        ),
+      }
+    })
+  }, [])
+
+  const value: AuthContextValue = {
+    ...state,
+    login,
+    signup,
+    logout,
+    switchWorkspace,
+    renameCurrentWorkspace,
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

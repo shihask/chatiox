@@ -8,6 +8,7 @@ import { routes as crmContactsRoutes } from './controllers/crm/contacts.routes.t
 import { routes as crmNotesRoutes } from './controllers/crm/notes.routes.ts'
 import { routes as crmTasksRoutes } from './controllers/crm/tasks.routes.ts'
 import { routes as analyticsAnalyticsRoutes } from './controllers/analytics/analytics.routes.ts'
+import { routes as administrationWorkspaceRoutes } from './controllers/administration/workspace.routes.ts'
 // Future modules: ONE import + ONE array entry, grouped by domain, e.g.
 //   CRM            -> controllers/crm/tasks.routes.ts       -> crmTasksRoutes
 //   Communication  -> controllers/communication/inbox.routes.ts -> communicationInboxRoutes
@@ -50,4 +51,5 @@ export const routes: RouteDefinition[] = [
   crmNotesRoutes,
   crmTasksRoutes,
   analyticsAnalyticsRoutes,
+  administrationWorkspaceRoutes,
 ].flat()
