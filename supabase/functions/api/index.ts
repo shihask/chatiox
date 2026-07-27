@@ -5,6 +5,7 @@ import { notFoundResponse } from '../_shared/response.ts'
 import { withPublicHttp } from '../_shared/http/withPublicHttp.ts'
 import { withAuthenticatedHttp } from '../_shared/http/withAuthenticatedHttp.ts'
 import { withWorkspaceHttp } from '../_shared/http/withWorkspaceHttp.ts'
+import { withWebhookHttp } from '../_shared/http/withWebhookHttp.ts'
 import { routes } from './router.ts'
 
 Deno.serve(async (req) => {
@@ -32,6 +33,9 @@ Deno.serve(async (req) => {
         break
       case 'workspace':
         response = await withWorkspaceHttp(route.handler)(req, args)
+        break
+      case 'webhook':
+        response = await withWebhookHttp(route.handler)(req, args)
         break
     }
     return withCors(req, response)

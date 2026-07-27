@@ -6,6 +6,7 @@ import {
   Image,
   MessagesSquare,
   Radio,
+  Phone,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -18,6 +19,7 @@ export const CHANNEL_TYPES = [
   'instagram',
   'messenger',
   'rcs',
+  'voice',
 ] as const
 
 export type ChannelType = (typeof CHANNEL_TYPES)[number]
@@ -34,4 +36,5 @@ export const CHANNEL_TYPE_META: Record<ChannelType, { label: string; icon: Lucid
   instagram: { label: 'Instagram', icon: Image },
   messenger: { label: 'Messenger', icon: MessagesSquare },
   rcs: { label: 'RCS', icon: Radio },
+  voice: { label: 'Voice', icon: Phone },
 }

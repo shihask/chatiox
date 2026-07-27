@@ -1,6 +1,8 @@
 // Domain event bus -- console-log-backed today, swappable for a real broker later with zero
 // call-site changes (see docs/architecture.md §5). onEvent() exists from Phase 1 onward so a
 // future consumer (Timeline, Automation) can subscribe without any emitting module changing.
+import type { ChannelType } from './channelTypes.ts'
+
 export type DomainEvent =
   | { type: 'ContactCreated'; workspaceId: string; contactId: string; actorUserId: string; occurredAt: string }
   | {
@@ -46,7 +48,43 @@ export type DomainEvent =
       occurredAt: string
     }
   | { type: 'TeamMemberJoined'; workspaceId: string; userId: string; email: string; occurredAt: string }
-// Pattern to extend once a module is built -- do not pre-add LeadStatusChanged/MessageDelivered/etc. now.
+  | { type: 'ConversationCreated'; workspaceId: string; conversationId: string; channelType: ChannelType; occurredAt: string }
+  | {
+      type: 'ConversationAssigned'
+      workspaceId: string
+      conversationId: string
+      assignedToUserId: string
+      actorUserId: string
+      occurredAt: string
+    }
+  | {
+      type: 'ConversationContactLinked'
+      workspaceId: string
+      conversationId: string
+      contactId: string
+      actorUserId: string
+      occurredAt: string
+    }
+  | {
+      type: 'MessageSent'
+      workspaceId: string
+      conversationId: string
+      messageId: string
+      actorUserId: string
+      occurredAt: string
+    }
+  | { type: 'MessageReceived'; workspaceId: string; conversationId: string; messageId: string; occurredAt: string }
+  | { type: 'MessageDelivered'; workspaceId: string; conversationId: string; messageId: string; occurredAt: string }
+  | { type: 'MessageRead'; workspaceId: string; conversationId: string; messageId: string; occurredAt: string }
+  | {
+      type: 'MessageFailed'
+      workspaceId: string
+      conversationId: string
+      messageId: string
+      errorCode: string
+      occurredAt: string
+    }
+// Pattern to extend once a module is built -- do not pre-add LeadStatusChanged/etc. speculatively.
 
 type EventListener = (event: DomainEvent) => void | Promise<void>
 

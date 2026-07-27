@@ -1,22 +1,41 @@
-// Mirrors docs/modules/communication/channels.md -- not implemented yet, no backend route exists.
-// ChannelType/ChannelCapabilities intentionally duplicated here rather than imported from the
-// backend's api/channels/channel.types.ts (different runtime, Deno vs. Vite) -- reconcile the
-// frontend copy in src/lib/channelTypes.ts once this module is actually implemented.
-type ChannelType = 'whatsapp' | 'email' | 'sms' | 'telegram' | 'instagram' | 'messenger' | 'rcs'
+// Mirrors supabase/functions/api/dtos/communication/channels.dtos.ts -- keep in sync.
+// Schema + service layer are implemented (see docs/modules/communication/channels.md); blocked on
+// a concrete IChannelProvider before there's a real setup flow to build. No API client/hooks/pages yet.
+import type { ChannelType } from '@/lib/channelTypes'
 
 export interface ChannelCapabilities {
   readonly supportsTemplates: boolean
   readonly supportsMedia: boolean
   readonly supportsButtons: boolean
+  readonly supportsLists: boolean
   readonly supportsLocation: boolean
   readonly supportsReactions: boolean
+  readonly supportsContacts: boolean
+  readonly supportsTyping: boolean
+  readonly supportsReadReceipts: boolean
+  readonly supportsFlows: boolean
+  readonly supportsEditingMessages: boolean
 }
 
-export interface WorkspaceChannelConnectionDTO {
+/** Never includes the secret -- credentials are Vault-backed and only ever resolved server-side. */
+export interface ChannelConnectionDTO {
   id: string
   workspaceId: string
   channelType: ChannelType
-  isActive: boolean
-  capabilities: ChannelCapabilities
-  connectedAt: string | null
+  displayName: string
+  externalAccountId: string | null
+  metadata: Record<string, unknown>
+  status: 'connected' | 'disconnected' | 'error'
+  lastError: string | null
+  connectedBy: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateConnectionDTO {
+  channelType: ChannelType
+  displayName: string
+  externalAccountId?: string
+  metadata?: Record<string, unknown>
+  secret: Record<string, unknown>
 }

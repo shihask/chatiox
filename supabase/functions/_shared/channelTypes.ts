@@ -9,6 +9,7 @@ export const CHANNEL_TYPES = [
   'instagram',
   'messenger',
   'rcs',
+  'voice',
 ] as const
 
 export type ChannelType = (typeof CHANNEL_TYPES)[number]

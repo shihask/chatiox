@@ -22,6 +22,11 @@ export type Handler = (req: Request, args: { params: RouteParams }) => Promise<R
 
 export type PublicHandler = (req: Request, args: { params: RouteParams }) => Promise<Response>
 
+/** Structurally identical to PublicHandler today -- no injected ctx, since resolution (signature
+ * verification, tenant lookup) is entirely provider-specific per request. Kept as its own type so
+ * webhook-specific error handling can diverge later without touching unrelated public routes. */
+export type WebhookHandler = (req: Request, args: { params: RouteParams }) => Promise<Response>
+
 export type AuthenticatedHandler = (
   req: Request,
   args: { params: RouteParams; ctx: AuthenticatedRequestContext },

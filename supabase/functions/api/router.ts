@@ -1,6 +1,7 @@
 import type {
   AuthenticatedHandler,
   PublicHandler,
+  WebhookHandler,
   WorkspaceHandler,
 } from '../_shared/http/requestContext.ts'
 import { routes as authRoutes } from './controllers/auth.routes.ts'
@@ -10,9 +11,12 @@ import { routes as crmTasksRoutes } from './controllers/crm/tasks.routes.ts'
 import { routes as analyticsAnalyticsRoutes } from './controllers/analytics/analytics.routes.ts'
 import { routes as administrationWorkspaceRoutes } from './controllers/administration/workspace.routes.ts'
 import { routes as administrationTeamMembersRoutes } from './controllers/administration/team-members.routes.ts'
+import { routes as communicationChannelsRoutes } from './controllers/communication/channels.routes.ts'
+import { routes as communicationTemplatesRoutes } from './controllers/communication/templates.routes.ts'
+import { routes as communicationInboxRoutes } from './controllers/communication/inbox.routes.ts'
+import { routes as communicationWebhooksRoutes } from './controllers/communication/webhooks.routes.ts'
 // Future modules: ONE import + ONE array entry, grouped by domain, e.g.
 //   CRM            -> controllers/crm/tasks.routes.ts       -> crmTasksRoutes
-//   Communication  -> controllers/communication/inbox.routes.ts -> communicationInboxRoutes
 //   Administration -> controllers/administration/billing.routes.ts -> administrationBillingRoutes
 // (not written as literal import statements here so deploy tooling doesn't try to bundle
 // not-yet-existing files -- see docs/architecture.md §1)
@@ -37,14 +41,19 @@ export interface WorkspaceRouteDefinition {
   tier: 'workspace'
   handler: WorkspaceHandler
 }
+/** Signature-verified, never JWT-authenticated -- inbound provider callbacks (see
+ * docs/architecture.md and _shared/http/withWebhookHttp.ts). */
+export interface WebhookRouteDefinition {
+  method: string
+  pattern: URLPattern
+  tier: 'webhook'
+  handler: WebhookHandler
+}
 export type RouteDefinition =
   | PublicRouteDefinition
   | AuthenticatedRouteDefinition
   | WorkspaceRouteDefinition
-
-// Reserved, not built in Phase 1: a separate /webhooks/<channel> route family for inbound provider
-// callbacks needs a fourth "webhook" tier (signature-verified, never JWT-authenticated) once a
-// provider is implemented -- see docs/architecture.md and _shared/http/.
+  | WebhookRouteDefinition
 
 export const routes: RouteDefinition[] = [
   authRoutes,
@@ -54,4 +63,8 @@ export const routes: RouteDefinition[] = [
   analyticsAnalyticsRoutes,
   administrationWorkspaceRoutes,
   administrationTeamMembersRoutes,
+  communicationChannelsRoutes,
+  communicationTemplatesRoutes,
+  communicationInboxRoutes,
+  communicationWebhooksRoutes,
 ].flat()

@@ -8,8 +8,8 @@ export function registerProvider(provider: IChannelProvider): void {
 
 /**
  * The seam business logic calls through -- real, testable code today even though no provider is
- * registered yet. Phase 1 ships no concrete providers by design (see
- * supabase/functions/api/channels/providers/*/README.md); this throws until e.g. WhatsAppProvider
+ * registered yet. Phase 1 ships no concrete providers by design (see the README under each
+ * supabase/functions/api/channels/providers/<name>/ folder); this throws until e.g. WhatsAppProvider
  * is implemented and registered.
  */
 export function getProvider(channelType: ChannelType): IChannelProvider {

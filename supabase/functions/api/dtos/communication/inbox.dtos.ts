@@ -1,10 +1,7 @@
-// Mirrors supabase/functions/api/dtos/communication/inbox.dtos.ts -- keep in sync.
-// Schema + service layer are implemented (see docs/modules/communication/inbox.md); blocked on a
-// concrete IChannelProvider before there's anything real to display. No API client/hooks/pages yet.
-import type { ChannelType } from '@/lib/channelTypes'
-import type { ContactDTO } from '@/features/crm/contacts/types/contact.types'
-import type { NoteDTO } from '@/features/crm/notes/types/note.types'
-import type { TaskDTO } from '@/features/crm/tasks/types/task.types'
+import type { ChannelType } from '../../../_shared/channelTypes.ts'
+import type { ContactDTO } from '../../dtos/crm/contacts.dtos.ts'
+import type { NoteDTO } from '../../dtos/crm/notes.dtos.ts'
+import type { TaskDTO } from '../../dtos/crm/tasks.dtos.ts'
 
 export interface ConversationContactSummaryDTO {
   id: string
@@ -78,26 +75,13 @@ export interface ConversationNoteDTO {
   createdAt: string
 }
 
-/** Composes CRM context rather than owning a denormalized copy -- "Communication depends on CRM"
- * (docs/modules/communication/inbox.md). `contact` is null for unassigned conversations. */
+/** Composes CRM context rather than owning a denormalized copy of it -- see docs/modules/
+ * communication/inbox.md's "Communication depends on CRM" principle. `contact` is null for
+ * unassigned conversations. */
 export interface ConversationDetailDTO {
   conversation: ConversationDTO
   contact: ContactDTO | null
   notes: NoteDTO[]
   openTasks: TaskDTO[]
   conversationNotes: ConversationNoteDTO[]
-}
-
-export interface ListConversationsParams {
-  page?: number
-  pageSize?: number
-  status?: 'open' | 'pending' | 'closed'
-  assignedToUserId?: string
-  channelType?: ChannelType
-  unassigned?: boolean
-}
-
-export interface SendMessageDTO {
-  text?: string
-  template?: { name: string; languageCode?: string; variables?: Record<string, string> }
 }

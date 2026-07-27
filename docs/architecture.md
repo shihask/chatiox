@@ -81,3 +81,32 @@ To keep the CRM from drifting into a full sales platform: Deals, Opportunity for
 ## 7. Where module documentation lives
 
 Every module not built in a given phase gets a spec-only doc at `docs/modules/<domain>/<module>.md` (flat `docs/modules/<name>.md` only for genuinely cross-domain infrastructure, e.g. `jobs.md`) -- never a placeholder folder inside `supabase/functions/`, since there is exactly one deployable bundle and a stray README next to real controllers would look like dead scaffolding. See each module's doc for its planned data shape, endpoints, and implementation checklist.
+
+## 8. The webhook route tier, and how inbound provider events get routed
+
+A fourth route tier, `'webhook'`, sits alongside `public`/`authenticated`/`workspace` (`router.ts`'s `RouteTier`, `_shared/http/withWebhookHttp.ts`). It authenticates differently from every other tier: no JWT, no `X-Workspace-Id` header -- inbound provider callbacks (WhatsApp, and later Email/SMS/Voice/Instagram/Messenger) authenticate via their own signature scheme, verified inside the handler by the channel's own `IChannelProvider.parseWebhookEnvelope()`.
+
+There is exactly **one dynamic route**, `/webhooks/:channelType`, for every channel -- not one route per provider. The channel type comes from the URL path itself, so adding a new channel later never touches `router.ts` or the webhooks controller: it's purely a matter of implementing and registering a new `IChannelProvider`. The generic flow (`communication/webhooks.controller.ts`):
+
+```
+1. channelType from the URL param -> getProvider(channelType); 404 if none registered yet
+2. GET requests: only meaningful for providers with a verification handshake (Meta's hub.challenge)
+3. POST: read raw body + headers; provider.parseWebhookEnvelope() verifies the signature and
+   extracts an account identifier (e.g. WhatsApp's phone_number_id) -- 401 if unverified
+4. channelConnectionsRepository.findByExternalAccountId(channelType, accountIdentifier) resolves
+   which workspace this belongs to (service-role -- no tenant/auth context exists yet at this point)
+5. Log to webhook_events regardless of resolution outcome (service-role-only table, no RLS policies
+   for authenticated/anon at all -- an internal/ops log, not a workspace-facing table)
+6. No connection resolved -> 200 anyway (ack + ignore; never let an unrecognized account trigger a
+   provider's retry storm)
+7. provider.receiveWebhook() normalizes the payload -> inboxService.ingestInboundEvent() per event
+   (creates/updates conversations and messages, idempotent on provider_message_id/provider_event_id)
+```
+
+## 9. Channel connection secrets: Supabase Vault, not a plain column
+
+`channel_connections` (the per-workspace "connect your WhatsApp number" business module, `docs/modules/communication/channels.md`) never stores a raw access token/API key in a normal `jsonb` column, even RLS-restricted to `owner`/`admin`. Instead it stores a `secret_id` pointing at a Supabase Vault secret (`vault.secrets`, pgsodium-backed); the decrypted value only materializes inside `vault.decrypted_secrets`, a view Supabase restricts to the `service_role` by default -- architecturally unreachable by `anon`/`authenticated`, not just policy-restricted. Since PostgREST doesn't expose the `vault` schema, three narrow `SECURITY DEFINER` wrapper functions in `public` (`channel_connection_set_secret`/`_update_secret`/`_get_secret`, granted only to `service_role`) bridge the gap -- see `supabase/migrations/20260801000006_create_vault_secret_helpers.sql`.
+
+A plain RLS-restricted column was considered and rejected: it's one bug away from a secret leaking into a DTO response, whereas Vault makes that entire class of bug structurally impossible regardless of what the Service/Mapper layer does. The one place a decrypted secret ever exists in application code is `channels.repository.ts`'s `resolveForSending()`, called by `inboxService.sendMessage` immediately before invoking a provider, for the lifetime of one request.
+
+**Current connection model**: one Meta App for the whole Chatiox platform -- every workspace pastes its own WhatsApp permanent access token + phone number ID rather than each workspace registering its own Meta App. This means webhook signature verification uses one global Edge Function secret (not per-connection), and inbound events resolve to a workspace via `channel_connections.external_account_id` (e.g. `phone_number_id`) rather than a per-connection webhook URL. "Embedded Signup" (Meta's OAuth-based connect flow, no manual token paste) is a documented future upgrade to this module, not built now.
