@@ -12,6 +12,7 @@ import { NotesListPage } from '@/features/crm/notes/pages/NotesListPage'
 import { AnalyticsPage } from '@/features/analytics/AnalyticsPage'
 import { WorkspaceSettingsPage } from '@/features/administration/workspace/WorkspaceSettingsPage'
 import { TeamPage } from '@/features/administration/team-members/TeamPage'
+import { ChannelsPage } from '@/features/communication/channels/ChannelsPage'
 import { ComingSoonPage } from '@/components/feedback/ComingSoonPage'
 
 // Flat route list regardless of src/features/ nesting or Sidebar grouping (see navConfig.ts) --
@@ -44,15 +45,7 @@ export const router = createBrowserRouter([
               />
             ),
           },
-          {
-            path: '/channels',
-            element: (
-              <ComingSoonPage
-                moduleName="Channels"
-                features={['Connect your WhatsApp number', 'Connect a sending email address', 'Manage channel-level settings']}
-              />
-            ),
-          },
+          { path: '/channels', element: <ChannelsPage /> },
           {
             path: '/campaigns',
             element: (

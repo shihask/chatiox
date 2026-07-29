@@ -2,9 +2,11 @@
 
 ## Status
 
-Schema and the full CRUD service/repository/controller layer are implemented and curl-verified.
-Sidebar entry still renders `ComingSoonPage` -- blocked on the frontend (API client, hooks, a
-"connect your WhatsApp number" screen), sequenced after the first concrete provider exists.
+Fully implemented end to end: schema, service/repository/controller layer, and the frontend
+(`src/features/communication/channels/`) -- a real `/channels` page with a WhatsApp connect/
+reconnect/disconnect flow, curl- and Playwright-verified. Manual credential entry (Phone Number ID +
+access token, pasted into a form) rather than OAuth -- see "Embedded Signup" below for why that's a
+deliberately separate, later phase rather than built alongside this pass.
 
 ## This is NOT the same thing as `supabase/functions/api/channels/`
 
@@ -61,6 +63,32 @@ verify-token pair (Edge Function secrets, not per-connection), and there's exact
 how an inbound event resolves to the right workspace (`channel_connections.external_account_id`).
 **Embedded Signup** (OAuth-based, no manual token paste) is a documented future upgrade, not built now.
 
+## Future phase: WhatsApp Embedded Signup
+
+The manual-entry form (Phone Number ID + WABA ID + access token, pasted by the workspace owner) is
+correct for now but not the end state -- Meta's **Embedded Signup** flow (a Facebook Login popup:
+"Connect WhatsApp" → Meta Login → grant permission → Chatiox receives a code, exchanges it
+server-side for a long-lived token, and stores WABA ID/Phone Number ID/token exactly the same way
+the manual form does today) is the eventual replacement, matching how Slack/Google-style
+integrations work.
+
+**Deliberately not built alongside this pass**, for two concrete reasons:
+1. It requires **Meta App Review** (for `whatsapp_business_management`/`whatsapp_business_messaging`
+   on behalf of other businesses) and **Business Verification** -- an external, days-to-weeks
+   approval process, not something buildable-and-provable in one sitting the way the rest of this
+   backend was.
+2. It isn't needed yet -- there is exactly one real workspace connecting exactly one real number
+   today (the developer's own test setup). Embedded Signup earns its cost when a second real
+   customer needs to bring their own WhatsApp number; building it speculatively ahead of that
+   violates this project's own "don't build ahead of concrete need" discipline.
+
+**What doesn't change when this eventually gets built**: the same `POST /channel-connections`
+endpoint, the same `channel_connections` schema (Vault-backed secret, `external_account_id`,
+`metadata`), and the same `ConnectWhatsAppDialog`-shaped UI slot -- Embedded Signup only changes
+*how* the access token gets into that same shape (an OAuth code-exchange step instead of a pasted
+value), not the shape itself. This is the same "freeze the backend, evolve the frontend/providers"
+discipline the rest of Phase 2 has followed.
+
 ## Data shape (implemented -- see supabase/functions/api/dtos/communication/channels.dtos.ts)
 
 ```ts
@@ -79,10 +107,13 @@ interface ChannelConnectionDTO {
 
 ## Implementation checklist
 
-- [x] A concrete provider (e.g. `WhatsAppProvider`) must exist in `api/channels/providers/whatsapp/`
-      and be registered via `registerProvider()` before this module has anything real to configure
-      -- **still the remaining gap**
+- [x] A concrete provider (`MetaWhatsAppProvider`) exists in `api/channels/providers/whatsapp/` and
+      is registered via `registerProvider()`
 - [x] Migration: `channel_connections`, Vault-backed, RLS restricted to `owner`/`admin`
 - [x] `communication/channels.controller.ts` / `.service.ts` / `.repository.ts` / `.routes.ts`
 - [x] `GET /channel-connections` returns the workspace's connections (credentials always redacted)
-- [ ] Frontend: connect-a-channel UI, sequenced after the first provider exists
+- [x] Frontend: `ChannelsPage` (WhatsApp connect/reconnect/disconnect; Email/SMS/Voice shown as
+      "coming soon" since no concrete provider exists for them yet)
+- [ ] WhatsApp Embedded Signup (see above) -- future phase, needs Meta App Review + Business
+      Verification first
+- [ ] Email/SMS/Voice connect flows -- once their own `IChannelProvider`s exist

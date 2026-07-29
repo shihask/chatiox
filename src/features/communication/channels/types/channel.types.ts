@@ -1,6 +1,4 @@
 // Mirrors supabase/functions/api/dtos/communication/channels.dtos.ts -- keep in sync.
-// Schema + service layer are implemented (see docs/modules/communication/channels.md); blocked on
-// a concrete IChannelProvider before there's a real setup flow to build. No API client/hooks/pages yet.
 import type { ChannelType } from '@/lib/channelTypes'
 
 export interface ChannelCapabilities {
@@ -38,4 +36,12 @@ export interface CreateConnectionDTO {
   externalAccountId?: string
   metadata?: Record<string, unknown>
   secret: Record<string, unknown>
+}
+
+export interface UpdateConnectionDTO {
+  displayName?: string
+  externalAccountId?: string | null
+  metadata?: Record<string, unknown>
+  secret?: Record<string, unknown>
+  status?: 'connected' | 'disconnected' | 'error'
 }

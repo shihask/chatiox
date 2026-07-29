@@ -51,7 +51,7 @@ export const navConfig: NavEntry[] = [
     label: 'Communication',
     children: [
       { type: 'link', label: 'Inbox', path: '/inbox', status: 'coming-soon', icon: Inbox },
-      { type: 'link', label: 'Channels', path: '/channels', status: 'coming-soon', icon: Radio },
+      { type: 'link', label: 'Channels', path: '/channels', status: 'real', icon: Radio },
     ],
   },
   {
