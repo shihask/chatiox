@@ -184,20 +184,3 @@ export async function findByExternalAccountId(
   }
 }
 
-/** Used by inboxService.sendMessage's pre-flight check -- a clean 409 if the channel isn't
- * connected, rather than letting an unregistered/misconfigured provider throw. */
-export async function findConnectedForChannelType(
-  supabase: SupabaseClient,
-  workspaceId: string,
-  channelType: ChannelType,
-): Promise<ChannelConnectionRow | null> {
-  const { data, error } = await supabase
-    .from('channel_connections')
-    .select(CONNECTION_SELECT)
-    .eq('tenant_id', workspaceId)
-    .eq('channel_type', channelType)
-    .eq('status', 'connected')
-    .maybeSingle()
-  if (error) throw mapPostgrestError(error)
-  return (data as unknown as ChannelConnectionRow) ?? null
-}

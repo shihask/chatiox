@@ -7,6 +7,12 @@ import { withAuthenticatedHttp } from '../_shared/http/withAuthenticatedHttp.ts'
 import { withWorkspaceHttp } from '../_shared/http/withWorkspaceHttp.ts'
 import { withWebhookHttp } from '../_shared/http/withWebhookHttp.ts'
 import { routes } from './router.ts'
+import { registerProvider } from './channels/providerRegistry.ts'
+import { MetaWhatsAppProvider } from './channels/providers/whatsapp/metaWhatsAppProvider.ts'
+
+// Registered once per Edge Function isolate (module top-level, not per-request) -- see
+// providerRegistry.ts and docs/architecture.md §3.
+registerProvider(new MetaWhatsAppProvider())
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return corsPreflightResponse(req)

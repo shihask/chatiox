@@ -218,8 +218,18 @@ export async function sendMessage(
   const conversation = await inboxRepository.getByIdOrThrow(ctx.supabase, ctx.workspaceId, conversationId)
   const channelType = conversation.channel_type as ChannelType
 
-  const connectionRow = await channelsRepository.findConnectedForChannelType(ctx.supabase, ctx.workspaceId, channelType)
-  if (!connectionRow) throw new ConflictError(`${channelType} isn't connected for this workspace yet`)
+  // Must resolve THIS conversation's own connection, not "any connected connection of this
+  // channel type" -- a workspace can have multiple connected numbers for the same channel type
+  // (e.g. Sales WhatsApp + Support WhatsApp), and picking the wrong one would silently send from
+  // the wrong number (or, with more than one match, crash outright on an ambiguous .maybeSingle()).
+  const connectionRow = await channelsRepository.getByIdOrThrow(
+    ctx.supabase,
+    ctx.workspaceId,
+    conversation.channel_connection_id,
+  )
+  if (connectionRow.status !== 'connected') {
+    throw new ConflictError(`${channelType} isn't connected for this workspace yet`)
+  }
 
   const resolvedConnection = await channelsRepository.resolveForSending(connectionRow.id)
   if (!resolvedConnection) throw new ConflictError(`${channelType} isn't connected for this workspace yet`)
