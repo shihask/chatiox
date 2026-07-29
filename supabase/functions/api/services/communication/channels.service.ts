@@ -54,7 +54,12 @@ export async function discoverWhatsAppEmbeddedSignupAssets(
 
   const { accessToken } = await embeddedSignup.exchangeCodeForAccessToken(input.code)
   const secretId = await channelsRepository.storeSecret(ctx.workspaceId, { accessToken })
-  const candidates = await embeddedSignup.discoverWhatsAppBusinessAssets(accessToken)
+
+  const wabaIds = [...new Set([...(input.wabaIds ?? []), ...(input.wabaId ? [input.wabaId] : [])])]
+  const candidates = await embeddedSignup.discoverWhatsAppBusinessAssets(accessToken, {
+    wabaIds,
+    phoneNumberId: input.phoneNumberId,
+  })
 
   return { secretId, candidates }
 }

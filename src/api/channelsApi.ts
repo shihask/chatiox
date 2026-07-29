@@ -12,8 +12,8 @@ export const channelsApi = {
   update: (id: string, input: UpdateConnectionDTO) =>
     apiClient.patch<ChannelConnectionDTO>(`/channel-connections/${id}`, input),
 
-  discoverEmbeddedSignupAssets: (code: string) =>
-    apiClient.post<EmbeddedSignupDiscoveryDTO>('/channel-connections/whatsapp/embedded-signup/discover', { code }),
+  discoverEmbeddedSignupAssets: (input: { code: string; wabaId?: string; wabaIds?: string[]; phoneNumberId?: string }) =>
+    apiClient.post<EmbeddedSignupDiscoveryDTO>('/channel-connections/whatsapp/embedded-signup/discover', input),
   completeEmbeddedSignup: (secretId: string, wabaId: string, phoneNumberId: string) =>
     apiClient.post<ChannelConnectionDTO>('/channel-connections/whatsapp/embedded-signup/complete', {
       secretId,

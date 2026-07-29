@@ -5,7 +5,8 @@ import { ApiError } from '@/api/apiClient'
 
 export function useDiscoverEmbeddedSignupAssets() {
   return useMutation({
-    mutationFn: (code: string) => channelsApi.discoverEmbeddedSignupAssets(code),
+    mutationFn: (input: { code: string; wabaId?: string; wabaIds?: string[]; phoneNumberId?: string }) =>
+      channelsApi.discoverEmbeddedSignupAssets(input),
     onError: (error) => {
       toast.error(error instanceof ApiError ? error.message : 'Failed to discover WhatsApp Business assets')
     },

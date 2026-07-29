@@ -72,11 +72,17 @@ Meta's hosted onboarding flow -- the workspace owner clicks **Connect with Meta*
 a popup, and Chatiox automatically discovers and connects their WhatsApp Business phone number.
 No Phone Number ID, WABA ID, or access token ever needs to be copied or pasted.
 
-**Discovery, not trust, drives what gets connected.** The popup itself is treated as opaque -- only
-the short-lived authorization `code` it returns is used for anything. Which businesses/WABAs/phone
-numbers actually exist is discovered fresh from the Graph API *after* the code exchange (businesses
-→ owned/shared WABAs → phone numbers), never assumed from whatever the popup's own payload might
-carry. If more than one phone number is found, the workspace picks which one to connect in a
+**Two signals, two different jobs.** Meta's popup emits a `WA_EMBEDDED_SIGNUP` `postMessage` event
+on completion carrying `waba_id`/`phone_number_id` (and `waba_ids` for multi-WABA businesses) --
+this is the documented, intended mechanism for a Tech Provider to learn *which* asset the customer
+just granted inside Meta's own hosted UI, not something to route around. `src/lib/facebookSdk.ts`
+listens for it. What still never happens is trusting that event's associated metadata (phone
+number, business name, etc.) -- every candidate's actual details are fetched fresh from the Graph
+API server-side, using the exchanged access token, before anything is shown or stored. (An earlier
+version of this tried to independently *enumerate* businesses/WABAs from scratch via endpoints that
+were never confirmed to exist and could have surfaced assets the customer never intended to
+expose -- replaced with listing phone numbers under exactly the WABA id(s) the popup reported.) If
+more than one phone number is found, the workspace picks which one to connect in a
 Chatiox-rendered step -- the architecture already supports multiple `channel_connections` of one
 channel type (Sales/Support/Marketing numbers), and onboarding reflects that rather than assuming
 exactly one.
@@ -84,10 +90,10 @@ exactly one.
 Two backend steps, split because discovery and connection are separated by a user decision
 (picking a phone number) that can't happen inside a single request:
 
-1. **`POST /channel-connections/whatsapp/embedded-signup/discover { code }`** -- exchanges the code
-   for an access token, stashes it via the existing Vault secret-storage helper
-   (`channelsRepository.storeSecret`, the same one manual entry uses) *before* any
-   `channel_connections` row exists, then discovers every WABA/phone number the token can see
+1. **`POST /channel-connections/whatsapp/embedded-signup/discover { code, wabaId?, wabaIds?, phoneNumberId? }`**
+   -- exchanges the code for an access token, stashes it via the existing Vault secret-storage
+   helper (`channelsRepository.storeSecret`, the same one manual entry uses) *before* any
+   `channel_connections` row exists, then lists phone numbers for each reported WABA id
    (`display_phone_number`, `verified_name`, `quality_rating`, `messaging_limit_tier` per candidate,
    all from one Graph API call each). Returns `{ secretId, candidates }` -- the access token itself
    never reaches the browser, only the opaque `secretId` reference.
@@ -112,11 +118,13 @@ the Embedded Signup `config_id`.
 
 **Configuration required** (Edge Function secrets/env vars, not schema): `WHATSAPP_APP_ID` (server,
 alongside the existing `WHATSAPP_APP_SECRET`), `VITE_META_APP_ID` /
-`VITE_META_EMBEDDED_SIGNUP_CONFIG_ID` (frontend, non-secret). Requires the Meta App to have the
-**Facebook Login for Business** product added and a WhatsApp Embedded Signup configuration created
-(yields the `config_id`) -- a one-time Meta dashboard step, not something a code change can do.
-Works today for the developer's own Meta test business/WABA; onboarding an unrelated second
-business additionally needs Meta Business Verification + App Review for
+`VITE_META_EMBEDDED_SIGNUP_CONFIG_ID` (frontend, non-secret) -- all set and deployed. Requires a
+WhatsApp-specific Embedded Signup configuration in the Meta App Dashboard, created via **Create from
+template → "WhatsApp Embedded Signup Configuration"**, not the generic "Create configuration"
+builder -- the generic one only offers Pages/Instagram/Ads Accounts as asset types (no WhatsApp
+Business Accounts option), because it's meant for unrelated Facebook Login for Business use cases,
+not this flow. Works today for the developer's own Meta test business/WABA; onboarding an unrelated
+second business additionally needs Meta Business Verification + App Review for
 `whatsapp_business_management` (Advanced Access) -- an external gate, not a Chatiox limitation.
 
 **Zero schema changes.** `channel_connections` already stored exactly what Embedded Signup

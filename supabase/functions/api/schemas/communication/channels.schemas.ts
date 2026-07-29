@@ -13,6 +13,13 @@ export type CreateConnectionInput = z.infer<typeof createConnectionSchema>
 
 export const discoverEmbeddedSignupAssetsSchema = z.object({
   code: z.string().min(1),
+  // Reported by Meta's WA_EMBEDDED_SIGNUP postMessage event (see src/lib/facebookSdk.ts) -- which
+  // WABA(s)/phone number the customer granted inside Meta's own hosted UI. Best-effort: Graph API
+  // (fetched server-side, after the code exchange) is still what actually gets stored, never these
+  // values directly.
+  wabaId: z.string().optional(),
+  wabaIds: z.array(z.string()).optional(),
+  phoneNumberId: z.string().optional(),
 })
 export type DiscoverEmbeddedSignupAssetsInput = z.infer<typeof discoverEmbeddedSignupAssetsSchema>
 

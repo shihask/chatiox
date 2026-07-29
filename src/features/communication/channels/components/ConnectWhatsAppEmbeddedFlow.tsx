@@ -54,10 +54,9 @@ export function ConnectWhatsAppEmbeddedFlow({ open, onOpenChange }: { open: bool
 
   async function handleStart() {
     setState({ phase: 'logging-in' })
-    let code: string
+    let loginResult: { code: string; wabaId?: string; wabaIds?: string[]; phoneNumberId?: string }
     try {
-      const result = await loginWithEmbeddedSignup(config.metaAppId ?? '', config.metaEmbeddedSignupConfigId ?? '')
-      code = result.code
+      loginResult = await loginWithEmbeddedSignup(config.metaAppId ?? '', config.metaEmbeddedSignupConfigId ?? '')
     } catch (err) {
       setState({ phase: 'error', failedStepIndex: 0, message: err instanceof Error ? err.message : 'Meta sign-in was cancelled or denied.' })
       return
@@ -66,7 +65,7 @@ export function ConnectWhatsAppEmbeddedFlow({ open, onOpenChange }: { open: bool
     setState({ phase: 'verifying' })
     setState({ phase: 'discovering' })
     try {
-      const discovery = await discoverAssets.mutateAsync(code)
+      const discovery = await discoverAssets.mutateAsync(loginResult)
       if (discovery.candidates.length === 0) {
         setState({ phase: 'error', failedStepIndex: 2, message: 'No WhatsApp Business phone numbers were found for this Meta account.' })
         return

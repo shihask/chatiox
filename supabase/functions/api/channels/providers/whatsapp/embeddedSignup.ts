@@ -4,10 +4,14 @@
 // holding instance state, since the token in play changes across the discover/complete steps (see
 // channels.service.ts's discoverWhatsAppEmbeddedSignupAssets/completeWhatsAppEmbeddedSignup).
 //
-// The exact discovery endpoint sequence below (businesses -> owned/client WABAs -> phone numbers)
-// is Chatiox's best current understanding of Meta's Graph API; per the plan, it gets confirmed
-// against real responses from the user's own test business during implementation, not assumed
-// blindly -- these are read-only GETs, curl-testable directly with an exchanged token.
+// Discovery is scoped to the WABA id(s) Meta's own WA_EMBEDDED_SIGNUP postMessage event reports on
+// completion (see src/lib/facebookSdk.ts) -- that event is the documented, intended way a Tech
+// Provider learns which asset the customer just granted inside Meta's hosted UI, not something to
+// route around. An earlier version of this file tried to independently enumerate businesses/WABAs
+// from scratch (/me/businesses -> owned_whatsapp_business_accounts/client_whatsapp_business_accounts)
+// -- removed: those endpoints were never confirmed to exist, and even if they did, a broad account-
+// wide scan could surface WABAs the customer never intended to expose to Chatiox. Listing phone
+// numbers under a WABA id we already know was just granted is a much narrower, better-grounded call.
 import { MetaGraphApiError } from './metaGraphClient.ts'
 import { InternalError } from '../../../../_shared/errors.ts'
 
@@ -72,29 +76,26 @@ async function getPhoneNumbersForWaba(wabaId: string, accessToken: string): Prom
   }))
 }
 
-/** Businesses -> WABAs (owned and shared-with) -> phone numbers, for whichever businesses the
- * just-exchanged token has access to. Graph API is the source of truth here -- nothing from the
- * Embedded Signup popup itself is trusted for this list. */
-export async function discoverWhatsAppBusinessAssets(accessToken: string): Promise<EmbeddedSignupCandidate[]> {
-  const { data: businesses } = await graphGet<{ data: Array<{ id: string }> }>('/me/businesses', accessToken)
-
-  const wabaIds = new Set<string>()
-  for (const business of businesses) {
-    const [owned, client] = await Promise.all([
-      graphGet<{ data: Array<{ id: string }> }>(`/${business.id}/owned_whatsapp_business_accounts`, accessToken).catch(
-        () => ({ data: [] }),
-      ),
-      graphGet<{ data: Array<{ id: string }> }>(`/${business.id}/client_whatsapp_business_accounts`, accessToken).catch(
-        () => ({ data: [] }),
-      ),
-    ])
-    for (const waba of [...owned.data, ...client.data]) wabaIds.add(waba.id)
+/** Lists every phone number under each WABA id the popup's session-info event reported as just
+ * granted (see src/lib/facebookSdk.ts) -- scoped to assets the customer actually selected inside
+ * Meta's hosted UI, not an independent account-wide scan. Falls back to fetching a single phone
+ * number directly if only a phoneNumberId came through with no wabaId (rare, but Meta's docs don't
+ * guarantee both are always present together). */
+export async function discoverWhatsAppBusinessAssets(
+  accessToken: string,
+  hints: { wabaIds: string[]; phoneNumberId?: string },
+): Promise<EmbeddedSignupCandidate[]> {
+  if (hints.wabaIds.length > 0) {
+    const candidateLists = await Promise.all(hints.wabaIds.map((wabaId) => getPhoneNumbersForWaba(wabaId, accessToken)))
+    return candidateLists.flat()
   }
 
-  const candidateLists = await Promise.all(
-    [...wabaIds].map((wabaId) => getPhoneNumbersForWaba(wabaId, accessToken)),
-  )
-  return candidateLists.flat()
+  if (hints.phoneNumberId) {
+    const details = await getPhoneNumberDetails(hints.phoneNumberId, accessToken)
+    return [{ wabaId: '', phoneNumberId: hints.phoneNumberId, ...details }]
+  }
+
+  return []
 }
 
 /** Re-fetches the SELECTED candidate's details fresh at the moment of storage, rather than
