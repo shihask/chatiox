@@ -34,21 +34,26 @@ export function InboxPage() {
   const channelDisconnected = Boolean(detail) && connection?.status !== 'connected'
 
   // WhatsApp (and most chat channels) only allow free-text replies within 24 hours of the
-  // contact's last inbound message -- outside that window (or if they've never written in at
-  // all, e.g. a business-initiated conversation), Meta requires an approved template instead.
-  // Template sending isn't built yet, so this just disables free text rather than pretending.
+  // contact's last inbound message -- outside that window, Meta normally requires an approved
+  // template instead. Advisory only, not enforced client-side: Meta relaxes this for a test
+  // number's own pre-registered recipients (confirmed empirically -- the very first outbound send
+  // test in this project worked with zero prior inbound message), and more generally Meta's real
+  // API is the actual policy authority. A rejected send still surfaces Meta's real error on the
+  // message bubble, same as any other failure, rather than Chatiox pre-emptively guessing.
   const lastInboundAt = messages?.data.reduce<string | null>((latest, m) => {
     if (m.direction !== 'inbound') return latest
     return !latest || new Date(m.occurredAt) > new Date(latest) ? m.occurredAt : latest
   }, null)
   const withinCareWindow = isWithinCareWindow(lastInboundAt ?? null)
 
-  const composerDisabled = channelDisconnected || (Boolean(detail) && !withinCareWindow)
-  const disabledReason = channelDisconnected
-    ? connection
-      ? `${connection.displayName} is disconnected -- reconnect it in Channels to reply.`
-      : 'This channel connection no longer exists.'
-    : 'Outside the 24-hour customer care window -- WhatsApp requires an approved template to message first (coming soon).'
+  const composerDisabled = channelDisconnected
+  const disabledReason = connection
+    ? `${connection.displayName} is disconnected -- reconnect it in Channels to reply.`
+    : 'This channel connection no longer exists.'
+  const composerWarning =
+    Boolean(detail) && !withinCareWindow
+      ? 'Outside the 24-hour customer care window -- Meta may require an approved template for this recipient (template support coming soon).'
+      : undefined
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -85,6 +90,7 @@ export function InboxPage() {
                 conversationId={detail.conversation.id}
                 disabled={composerDisabled}
                 disabledReason={disabledReason}
+                warning={composerWarning}
               />
             </>
           )}

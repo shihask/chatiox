@@ -2,7 +2,21 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useSendMessage } from '@/features/communication/inbox/hooks/useSendMessage'
 
-export function Composer({ conversationId, disabled, disabledReason }: { conversationId: string; disabled?: boolean; disabledReason?: string }) {
+export function Composer({
+  conversationId,
+  disabled,
+  disabledReason,
+  warning,
+}: {
+  conversationId: string
+  disabled?: boolean
+  disabledReason?: string
+  /** Advisory only -- shown above the composer but doesn't block sending. Meta's real API is the
+   * actual enforcement authority for policy restrictions like the 24-hour customer care window;
+   * a rejected send still surfaces Meta's real error on the message bubble, same as any other
+   * failure -- Chatiox doesn't need to pre-emptively guess right when the real system will tell us. */
+  warning?: string
+}) {
   const [draft, setDraft] = useState('')
   const sendMessage = useSendMessage(conversationId)
 
@@ -30,6 +44,7 @@ export function Composer({ conversationId, disabled, disabledReason }: { convers
 
   return (
     <div className="shrink-0 border-t p-3">
+      {warning && <p className="mb-2 text-[12px] text-muted-foreground">{warning}</p>}
       <div className="flex items-end gap-2">
         <textarea
           value={draft}
