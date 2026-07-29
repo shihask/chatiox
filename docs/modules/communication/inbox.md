@@ -2,10 +2,15 @@
 
 ## Status
 
-Schema, `IChannelProvider` interface, and the full service/repository/controller layer are
-implemented and curl-verified end to end. Sidebar entry still renders `ComingSoonPage` -- blocked on
-a concrete `IChannelProvider` (see `supabase/functions/api/channels/providers/`) and the frontend
-(API client, hooks, pages), both deliberately sequenced after the first provider (WhatsApp) exists.
+Fully implemented end to end: schema, service/repository/controller layer, and the frontend
+(`src/features/communication/inbox/`) -- a real `/inbox` two-pane page (conversation list +
+thread view), curl- and Playwright-verified. Conversation list filters (status tabs, Unassigned,
+My conversations), thread view with per-message delivery status, a composer, assignment, and
+contact linking (existing contact search or create-new) are all real and wired to the endpoints
+this module already had. Conversation-scoped internal notes (`conversation_notes`) are schema/API-
+complete but have no UI yet -- deliberately deferred, not part of this pass's explicit scope.
+Real-time updates are a simple `refetchInterval` poll (~5s) for now; a genuine Supabase Realtime
+subscription is a separate, later roadmap item.
 
 ## Model
 
@@ -123,13 +128,16 @@ interface ConversationEventDTO {
       registered into `router.ts`
 - [x] Ownership history: every assignment change (including reassignment) writes an `assigned`
       conversation_event with `{fromUserId, toUserId}` -- this *is* the audit trail, no separate table
-- [ ] A concrete `IChannelProvider` (e.g. `WhatsAppProvider`, see
-      `supabase/functions/api/channels/providers/whatsapp/`) -- Inbox reads/writes already go
-      through `getProvider(channelType)`, never a hardcoded WhatsApp call; this is the only
-      remaining gap before messages can actually send/receive
+- [x] A concrete `IChannelProvider` (`MetaWhatsAppProvider`, see
+      `supabase/functions/api/channels/providers/whatsapp/`) -- Inbox reads/writes go through
+      `getProvider(channelType)`, never a hardcoded WhatsApp call
 - [x] Webhook receipt (`/webhooks/:channelType`, the `'webhook'` route tier) is what populates
       inbound messages -- not a polling loop; generic across every channel type by design
-- [ ] Frontend: API client, hooks, pages -- sequenced after the first provider exists
+- [x] Frontend: API client, hooks, `InboxPage` (conversation list, thread view, composer,
+      assignment, contact linking)
+- [ ] Conversation-scoped notes UI (`conversation_notes` -- backend already supports this;
+      deferred, not part of this pass's explicit scope)
+- [ ] Real Supabase Realtime subscriptions (currently a ~5s poll via `refetchInterval`)
 
 ## Explicitly deferred (documented, not built)
 

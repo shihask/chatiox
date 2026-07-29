@@ -13,6 +13,7 @@ import { AnalyticsPage } from '@/features/analytics/AnalyticsPage'
 import { WorkspaceSettingsPage } from '@/features/administration/workspace/WorkspaceSettingsPage'
 import { TeamPage } from '@/features/administration/team-members/TeamPage'
 import { ChannelsPage } from '@/features/communication/channels/ChannelsPage'
+import { InboxPage } from '@/features/communication/inbox/InboxPage'
 import { ComingSoonPage } from '@/components/feedback/ComingSoonPage'
 
 // Flat route list regardless of src/features/ nesting or Sidebar grouping (see navConfig.ts) --
@@ -36,15 +37,8 @@ export const router = createBrowserRouter([
           { path: '/contacts/:id', element: <ContactDetailPage /> },
           { path: '/tasks', element: <TasksListPage /> },
           { path: '/notes', element: <NotesListPage /> },
-          {
-            path: '/inbox',
-            element: (
-              <ComingSoonPage
-                moduleName="Inbox"
-                features={['Unified WhatsApp, email & SMS threads', 'Reply without leaving the CRM', 'Conversation history tied to each contact']}
-              />
-            ),
-          },
+          { path: '/inbox', element: <InboxPage /> },
+          { path: '/inbox/:conversationId', element: <InboxPage /> },
           { path: '/channels', element: <ChannelsPage /> },
           {
             path: '/campaigns',
