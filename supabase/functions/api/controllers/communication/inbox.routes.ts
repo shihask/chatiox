@@ -9,6 +9,12 @@ export const routes: RouteDefinition[] = [
     handler: inboxController.listConversations,
   },
   {
+    method: 'POST',
+    pattern: new URLPattern({ pathname: '/conversations' }),
+    tier: 'workspace',
+    handler: inboxController.startConversation,
+  },
+  {
     method: 'GET',
     pattern: new URLPattern({ pathname: '/conversations/:id' }),
     tier: 'workspace',

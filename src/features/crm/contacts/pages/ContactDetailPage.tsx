@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -15,6 +16,7 @@ import { LeadStatusBadge } from '@/features/crm/contacts/components/LeadStatusBa
 import { useContact } from '@/features/crm/contacts/hooks/useContact'
 import { useDeleteContact } from '@/features/crm/contacts/hooks/useDeleteContact'
 import { useSaveContactWithChannels } from '@/features/crm/contacts/hooks/useSaveContactWithChannels'
+import { useStartConversation } from '@/features/communication/inbox/hooks/useStartConversation'
 import { CHANNEL_TYPE_META } from '@/lib/channelTypes'
 import { avatarClassFor } from '@/lib/avatarColor'
 import { formatDate } from '@/lib/date'
@@ -28,6 +30,7 @@ export function ContactDetailPage() {
   const { data: contact, isLoading, isError, error, refetch } = useContact(id)
   const saveContact = useSaveContactWithChannels()
   const deleteContact = useDeleteContact()
+  const startConversation = useStartConversation()
 
   if (isLoading) return <LoadingState label="Loading contact..." />
 
@@ -49,6 +52,12 @@ export function ContactDetailPage() {
     if (!id) return
     await deleteContact.mutateAsync(id)
     void navigate('/contacts')
+  }
+
+  async function handleMessage() {
+    if (!contact) return
+    const conversation = await startConversation.mutateAsync({ contactId: contact.id, channelType: 'whatsapp' })
+    void navigate(`/inbox/${conversation.id}`)
   }
 
   return (
@@ -120,6 +129,18 @@ export function ContactDetailPage() {
                       <span className="font-label shrink-0 text-[9.5px] font-semibold text-primary uppercase">
                         Primary
                       </span>
+                    )}
+                    {channel.channelType === 'whatsapp' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 shrink-0 gap-1 px-1.5 text-[11.5px]"
+                        disabled={startConversation.isPending}
+                        onClick={() => void handleMessage()}
+                      >
+                        <MessageCircle className="h-3 w-3" />
+                        Message
+                      </Button>
                     )}
                   </div>
                 )

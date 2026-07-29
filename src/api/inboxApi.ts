@@ -1,4 +1,5 @@
 import { apiClient } from '@/api/apiClient'
+import type { ChannelType } from '@/lib/channelTypes'
 import type {
   ConversationDTO,
   ConversationDetailDTO,
@@ -28,6 +29,10 @@ function paramsToQuery(params: ListConversationsParams) {
 export const inboxApi = {
   listConversations: (params: ListConversationsParams) =>
     apiClient.getPaginated<ConversationDTO>('/conversations', paramsToQuery(params)),
+  // Finds the contact's existing live conversation for this channel, or creates one --
+  // business-initiated counterpart to inbound webhooks creating a conversation.
+  startConversation: (contactId: string, channelType: ChannelType) =>
+    apiClient.post<ConversationDTO>('/conversations', { contactId, channelType }),
   getConversation: (id: string) => apiClient.get<ConversationDetailDTO>(`/conversations/${id}`),
   updateConversation: (id: string, input: UpdateConversationDTO) =>
     apiClient.patch<ConversationDTO>(`/conversations/${id}`, input),

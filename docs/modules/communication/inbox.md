@@ -23,6 +23,39 @@ linking) -- distinct from chat `Messages`, which carry `Attachments`. A conversa
 own `conversation_notes` (an internal note scoped to *this* thread specifically, distinct from the
 contact-level `notes` table which persists across all of a contact's conversations).
 
+## Conversations are created from either direction
+
+Conversation creation is not tied exclusively to inbound webhooks. Both directions converge on
+the same find-or-create logic against `channel_identities` + the partial-unique `conversations`
+index:
+
+- **Inbound**: `inboxService.ingestInboundEvent()` -- a message arrives, resolve-or-create the
+  identity (unlinked if the sender is unknown), resolve-or-create the conversation.
+- **Outbound (business-initiated)**: `POST /conversations { contactId, channelType }` ->
+  `inboxService.getOrCreateConversationForContact()` -- an agent clicks **Message** on a Contact's
+  WhatsApp channel (`ContactDetailPage`). The contact is already known, so the identity is linked
+  immediately (`inboxRepository.findOrCreateChannelIdentityForContact`) instead of starting
+  unassigned. If a live conversation already exists for that identity, it's returned as-is
+  (idempotent -- clicking **Message** again just reopens the same thread); otherwise a new
+  `open` conversation is created against the workspace's connected connection for that channel
+  type (an error if none, or if more than one connected connection of that type exists --
+  picking which one to send from isn't supported yet).
+
+Either path can happen first for the same contact -- an agent can message someone who's never
+written in, and if they reply, the inbound path finds the same conversation rather than
+fragmenting into a second one (same identity, same partial-unique-index resolution both ways).
+
+### WhatsApp's 24-hour customer care window
+
+This is a Meta policy, not a Chatiox rule: free-text replies are only allowed within 24 hours of
+the contact's last inbound message; outside that window (or before they've ever written in at
+all, e.g. a fresh business-initiated conversation) only a pre-approved **template** message may be
+sent. The frontend (`InboxPage`) computes this client-side from the fetched message list (most
+recent `direction: 'inbound'` message's `occurredAt`) and disables the composer's free-text input
+outside the window with an explicit reason, rather than sending and letting Meta reject it.
+Template sending itself isn't built yet (see Templates roadmap item) -- the composer's disabled
+state is a placeholder for a future "Send Template" action, not a workaround.
+
 ## Conversations don't require a Contact -- the Unassigned inbox
 
 A `conversations` row FKs to `channel_identities` (a channel address -- phone number, email, IG
@@ -133,6 +166,10 @@ interface ConversationEventDTO {
       `getProvider(channelType)`, never a hardcoded WhatsApp call
 - [x] Webhook receipt (`/webhooks/:channelType`, the `'webhook'` route tier) is what populates
       inbound messages -- not a polling loop; generic across every channel type by design
+- [x] `POST /conversations { contactId, channelType }` -- business-initiated conversation
+      creation (find-or-create, idempotent), the outbound counterpart to `ingestInboundEvent`
+- [x] 24-hour customer care window enforced client-side in the composer (Meta policy, not a
+      Chatiox rule) -- free text disabled outside the window pending template support
 - [x] Frontend: API client, hooks, `InboxPage` (conversation list, thread view, composer,
       assignment, contact linking)
 - [ ] Conversation-scoped notes UI (`conversation_notes` -- backend already supports this;

@@ -33,6 +33,26 @@ export async function list(supabase: SupabaseClient, workspaceId: string): Promi
   return (data ?? []) as unknown as ChannelConnectionRow[]
 }
 
+/** Used only when starting a brand-new, business-initiated conversation (no existing conversation
+ * to resolve a connection from yet). Deliberately returns every match rather than `.maybeSingle()`
+ * -- the caller must decide what to do with more than one connected connection of this channel
+ * type, rather than crashing on an ambiguous result (see sendMessage's connection-resolution
+ * comment for the bug this pattern avoids repeating). */
+export async function listConnectedForChannelType(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  channelType: ChannelType,
+): Promise<ChannelConnectionRow[]> {
+  const { data, error } = await supabase
+    .from('channel_connections')
+    .select(CONNECTION_SELECT)
+    .eq('tenant_id', workspaceId)
+    .eq('channel_type', channelType)
+    .eq('status', 'connected')
+  if (error) throw mapPostgrestError(error)
+  return (data ?? []) as unknown as ChannelConnectionRow[]
+}
+
 export async function getByIdOrThrow(
   supabase: SupabaseClient,
   workspaceId: string,

@@ -486,6 +486,48 @@ export async function findOrCreateChannelIdentity(
   return data as ChannelIdentityRow
 }
 
+/** Business-initiated counterpart to findOrCreateChannelIdentity: the contact is already known
+ * (an agent is messaging FROM a Contact page), so the identity is linked immediately instead of
+ * starting unassigned. Throws if the address already belongs to a different contact. */
+export async function findOrCreateChannelIdentityForContact(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  channelType: ChannelType,
+  value: string,
+  contactId: string,
+): Promise<ChannelIdentityRow> {
+  const { data: existing, error: findError } = await supabase
+    .from('channel_identities')
+    .select('*')
+    .eq('tenant_id', workspaceId)
+    .eq('channel_type', channelType)
+    .eq('value', value)
+    .maybeSingle()
+  if (findError) throw mapPostgrestError(findError)
+
+  if (existing) {
+    if (existing.contact_id && existing.contact_id !== contactId) {
+      throw new ConflictError('This channel address is already linked to a different contact')
+    }
+    const { data, error } = await supabase
+      .from('channel_identities')
+      .update({ contact_id: contactId, last_seen_at: new Date().toISOString() })
+      .eq('id', existing.id)
+      .select('*')
+      .single()
+    if (error) throw mapPostgrestError(error)
+    return data as ChannelIdentityRow
+  }
+
+  const { data, error } = await supabase
+    .from('channel_identities')
+    .insert({ tenant_id: workspaceId, channel_type: channelType, value, contact_id: contactId })
+    .select('*')
+    .single()
+  if (error) throw mapPostgrestError(error)
+  return data as ChannelIdentityRow
+}
+
 export async function findLiveConversationForIdentity(
   supabase: SupabaseClient,
   workspaceId: string,

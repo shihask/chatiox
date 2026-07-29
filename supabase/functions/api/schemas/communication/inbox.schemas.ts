@@ -11,6 +11,12 @@ export const listConversationsQuerySchema = z.object({
 })
 export type ListConversationsQuery = z.infer<typeof listConversationsQuerySchema>
 
+export const startConversationSchema = z.object({
+  contactId: z.uuid(),
+  channelType: z.enum(CHANNEL_TYPES),
+})
+export type StartConversationInput = z.infer<typeof startConversationSchema>
+
 export const updateConversationSchema = z.object({
   status: z.enum(['open', 'pending', 'closed']).optional(),
   assignedToUserId: z.uuid().nullable().optional(),

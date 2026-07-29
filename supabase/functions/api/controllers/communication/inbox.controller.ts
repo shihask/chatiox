@@ -11,6 +11,7 @@ import {
   listConversationsQuerySchema,
   listMessagesQuerySchema,
   sendMessageSchema,
+  startConversationSchema,
   updateConversationSchema,
 } from '../../schemas/communication/inbox.schemas.ts'
 
@@ -24,6 +25,12 @@ export const listConversations: WorkspaceHandler = async (req, { ctx }) => {
   const query = parseQuery(listConversationsQuerySchema, new URL(req.url))
   const page = await inboxService.listConversations(ctx, query)
   return jsonPaginated(page.items, buildPaginationMeta(page.page, page.pageSize, page.total))
+}
+
+export const startConversation: WorkspaceHandler = async (req, { ctx }) => {
+  const input = await parseBody(startConversationSchema, req)
+  const conversation = await inboxService.getOrCreateConversationForContact(ctx, input)
+  return jsonCreated(conversation)
 }
 
 export const getConversation: WorkspaceHandler = async (req, { ctx, params }) => {

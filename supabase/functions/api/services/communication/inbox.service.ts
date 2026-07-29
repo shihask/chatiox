@@ -2,7 +2,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { recordAudit } from '../../../_shared/audit.ts'
 import { emit } from '../../../_shared/events.ts'
 import { requireRole } from '../../../_shared/rbac.ts'
-import { ConflictError, NotFoundError } from '../../../_shared/errors.ts'
+import { BadRequestError, ConflictError, NotFoundError } from '../../../_shared/errors.ts'
 import type { Page } from '../../../_shared/repository.ts'
 import type { WorkspaceRequestContext } from '../../../_shared/http/requestContext.ts'
 import type { ChannelType } from '../../../_shared/channelTypes.ts'
@@ -27,6 +27,7 @@ import type {
   LinkContactInput,
   ListConversationsQuery,
   SendMessageInput,
+  StartConversationInput,
   UpdateConversationInput,
 } from '../../schemas/communication/inbox.schemas.ts'
 import type {
@@ -44,6 +45,69 @@ export async function listConversations(
 ): Promise<Page<ConversationDTO>> {
   const page = await inboxRepository.list(ctx.supabase, ctx.workspaceId, query)
   return { ...page, items: page.items.map(mapConversationRowToDTO) }
+}
+
+/** Business-initiated counterpart to ingestInboundEvent's find-or-create -- lets an agent start
+ * messaging a Contact who has never written in, rather than tying conversation creation
+ * exclusively to inbound webhooks. Both directions converge on the same channel_identities +
+ * conversations rows, so a reply from the contact afterward just finds this conversation rather
+ * than fragmenting into a second one. */
+export async function getOrCreateConversationForContact(
+  ctx: WorkspaceRequestContext,
+  input: StartConversationInput,
+): Promise<ConversationDTO> {
+  requireRole(ctx, [...WRITE_ROLES])
+
+  const contactRow = await contactsRepository.getById(ctx.supabase, ctx.workspaceId, input.contactId)
+  if (!contactRow) throw new NotFoundError('Contact not found')
+  const contact = mapContactRowToDTO(contactRow)
+  const channel = contact.channels.find((c) => c.channelType === input.channelType)
+  if (!channel) throw new BadRequestError(`This contact has no ${input.channelType} channel`)
+
+  const connections = await channelsRepository.listConnectedForChannelType(ctx.supabase, ctx.workspaceId, input.channelType)
+  if (connections.length === 0) throw new ConflictError(`${input.channelType} isn't connected for this workspace yet`)
+  if (connections.length > 1) {
+    throw new ConflictError(
+      `Multiple connected ${input.channelType} channels exist -- choosing which one to send from isn't supported yet`,
+    )
+  }
+  const connection = connections[0]
+
+  const identity = await inboxRepository.findOrCreateChannelIdentityForContact(
+    ctx.supabase,
+    ctx.workspaceId,
+    input.channelType,
+    channel.value,
+    input.contactId,
+  )
+
+  const existingConversation = await inboxRepository.findLiveConversationForIdentity(ctx.supabase, ctx.workspaceId, identity.id)
+  if (existingConversation) return mapConversationRowToDTO(existingConversation)
+
+  const conversation = await inboxRepository.createConversation(ctx.supabase, ctx.workspaceId, {
+    channelIdentityId: identity.id,
+    contactId: input.contactId,
+    channelConnectionId: connection.id,
+    channelType: input.channelType,
+  })
+
+  await recordAudit(ctx.supabase, {
+    workspaceId: ctx.workspaceId,
+    actorUserId: ctx.userId,
+    action: 'conversation.started',
+    targetType: 'conversation',
+    targetId: conversation.id,
+    metadata: { contactId: input.contactId, channelType: input.channelType },
+  })
+  emit({
+    type: 'ConversationCreated',
+    workspaceId: ctx.workspaceId,
+    conversationId: conversation.id,
+    channelType: input.channelType,
+    occurredAt: new Date().toISOString(),
+  })
+
+  return mapConversationRowToDTO(conversation)
 }
 
 export async function getConversationDetail(
