@@ -69,7 +69,10 @@ export async function getByIdOrThrow(
   return data as unknown as ChannelConnectionRow
 }
 
-async function storeSecret(workspaceId: string, secret: Record<string, unknown>): Promise<string> {
+/** Exported for the WhatsApp Embedded Signup discover step, which needs to stash a freshly
+ * exchanged access token in Vault before any channel_connections row exists yet (the row is only
+ * created once the user picks which discovered phone number to connect). */
+export async function storeSecret(workspaceId: string, secret: Record<string, unknown>): Promise<string> {
   const serviceRoleClient = createServiceRoleClient()
   const { data, error } = await serviceRoleClient.rpc('channel_connection_set_secret', {
     p_secret_value: JSON.stringify(secret),
@@ -80,25 +83,40 @@ async function storeSecret(workspaceId: string, secret: Record<string, unknown>)
   return data as string
 }
 
-export async function create(
+/** Counterpart to storeSecret for the same pre-connection use case -- retrieves a stashed secret
+ * by its Vault id directly, without needing an owning channel_connections row. */
+export async function getSecretById(secretId: string): Promise<Record<string, unknown>> {
+  const serviceRoleClient = createServiceRoleClient()
+  const { data, error } = await serviceRoleClient.rpc('channel_connection_get_secret', {
+    p_secret_id: secretId,
+  })
+  if (error) throw new InternalError(error.message)
+  return data ? (JSON.parse(data as string) as Record<string, unknown>) : {}
+}
+
+async function insertConnectionRow(
   supabase: SupabaseClient,
   workspaceId: string,
-  input: CreateConnectionInput,
-  connectedBy: string,
+  input: {
+    channelType: string
+    displayName: string
+    externalAccountId: string | null
+    metadata: Record<string, unknown>
+    secretId: string
+    connectedBy: string
+  },
 ): Promise<ChannelConnectionRow> {
-  const secretId = await storeSecret(workspaceId, input.secret)
-
   const { data, error } = await supabase
     .from('channel_connections')
     .insert({
       tenant_id: workspaceId,
       channel_type: input.channelType,
       display_name: input.displayName,
-      external_account_id: input.externalAccountId ?? null,
-      metadata: input.metadata ?? {},
-      secret_id: secretId,
+      external_account_id: input.externalAccountId,
+      metadata: input.metadata,
+      secret_id: input.secretId,
       status: 'connected',
-      connected_by: connectedBy,
+      connected_by: input.connectedBy,
     })
     .select(CONNECTION_SELECT)
     .single()
@@ -109,6 +127,43 @@ export async function create(
     throw mapPostgrestError(error)
   }
   return data as unknown as ChannelConnectionRow
+}
+
+export async function create(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  input: CreateConnectionInput,
+  connectedBy: string,
+): Promise<ChannelConnectionRow> {
+  const secretId = await storeSecret(workspaceId, input.secret)
+  return insertConnectionRow(supabase, workspaceId, {
+    channelType: input.channelType,
+    displayName: input.displayName,
+    externalAccountId: input.externalAccountId ?? null,
+    metadata: input.metadata ?? {},
+    secretId,
+    connectedBy,
+  })
+}
+
+/** Embedded Signup's counterpart to create() -- the access token was already exchanged and
+ * stashed in Vault during the discover step (channelsService.discoverWhatsAppEmbeddedSignupAssets),
+ * so this reuses that secretId directly instead of minting a second Vault secret for the same
+ * token. Same insert path (and the same uq_channel_connections_type_external_account handling) as
+ * the manual flow -- only how the secret_id was obtained differs. */
+export async function createWithExistingSecret(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  input: {
+    channelType: ChannelType
+    displayName: string
+    externalAccountId: string
+    metadata: Record<string, unknown>
+    secretId: string
+  },
+  connectedBy: string,
+): Promise<ChannelConnectionRow> {
+  return insertConnectionRow(supabase, workspaceId, { ...input, connectedBy })
 }
 
 export async function update(

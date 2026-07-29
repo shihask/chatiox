@@ -45,3 +45,19 @@ export interface UpdateConnectionDTO {
   secret?: Record<string, unknown>
   status?: 'connected' | 'disconnected' | 'error'
 }
+
+/** One phone number discovered via Embedded Signup -- never includes the access token itself,
+ * only the opaque secretId reference used to complete the connection. */
+export interface EmbeddedSignupCandidateDTO {
+  wabaId: string
+  phoneNumberId: string
+  displayPhoneNumber: string
+  verifiedName: string
+  qualityRating: string | null
+  messagingLimitTier: string | null
+}
+
+export interface EmbeddedSignupDiscoveryDTO {
+  secretId: string
+  candidates: EmbeddedSignupCandidateDTO[]
+}

@@ -15,3 +15,20 @@ export interface ChannelConnectionDTO {
   createdAt: string
   updatedAt: string
 }
+
+/** One phone number discovered via Embedded Signup that the exchanged token has access to --
+ * never includes the access token itself, only the opaque secretId reference (see
+ * channels.repository.ts's storeSecret/getSecretById). */
+export interface EmbeddedSignupCandidateDTO {
+  wabaId: string
+  phoneNumberId: string
+  displayPhoneNumber: string
+  verifiedName: string
+  qualityRating: string | null
+  messagingLimitTier: string | null
+}
+
+export interface EmbeddedSignupDiscoveryDTO {
+  secretId: string
+  candidates: EmbeddedSignupCandidateDTO[]
+}

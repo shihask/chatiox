@@ -10,6 +10,7 @@ import { useTeamMembers } from '@/features/administration/team-members/hooks/use
 import { useChannelConnections } from '@/features/communication/channels/hooks/useChannelConnections'
 import { useUpdateConnection } from '@/features/communication/channels/hooks/useUpdateConnection'
 import { ConnectWhatsAppDialog } from '@/features/communication/channels/components/ConnectWhatsAppDialog'
+import { ConnectWhatsAppEmbeddedFlow } from '@/features/communication/channels/components/ConnectWhatsAppEmbeddedFlow'
 import { formatDate } from '@/lib/date'
 import { ApiError } from '@/api/apiClient'
 import type { ChannelConnectionDTO } from '@/features/communication/channels/types/channel.types'
@@ -32,6 +33,7 @@ function WhatsAppCard() {
   const { data: teamMembers } = useTeamMembers()
   const updateConnection = useUpdateConnection()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [embeddedFlowOpen, setEmbeddedFlowOpen] = useState(false)
 
   const connection = connections?.find((c) => c.channelType === 'whatsapp')
 
@@ -84,6 +86,12 @@ function WhatsAppCard() {
                 <dt className="font-label text-[11px] text-muted-foreground uppercase">Connected at</dt>
                 <dd className="font-medium text-foreground">{formatDate(connection.createdAt)}</dd>
               </div>
+              {connection.metadata.connectionMethod === 'embedded_signup' && (
+                <div>
+                  <dt className="font-label text-[11px] text-muted-foreground uppercase">Connected via</dt>
+                  <dd className="font-medium text-foreground">Meta</dd>
+                </div>
+              )}
             </dl>
             {connection.status === 'error' && connection.lastError && (
               <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{connection.lastError}</p>
@@ -93,21 +101,38 @@ function WhatsAppCard() {
                 Disconnect
               </Button>
             ) : (
-              <Button size="sm" onClick={() => { setDialogOpen(true); }}>
-                Reconnect
-              </Button>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button size="sm" onClick={() => { setEmbeddedFlowOpen(true); }}>
+                  Reconnect with Meta
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => { setDialogOpen(true); }}
+                  className="text-[12.5px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Manual setup
+                </button>
+              </div>
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-start gap-3">
+          <div className="flex flex-col items-start gap-2.5">
             <p className="text-sm text-muted-foreground">Not connected.</p>
-            <Button onClick={() => { setDialogOpen(true); }} className="gap-1.5">
-              Connect WhatsApp
+            <Button onClick={() => { setEmbeddedFlowOpen(true); }} className="gap-1.5">
+              Connect with Meta
             </Button>
+            <button
+              type="button"
+              onClick={() => { setDialogOpen(true); }}
+              className="text-[12.5px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+            >
+              Manual setup
+            </button>
           </div>
         )}
       </CardContent>
       <ConnectWhatsAppDialog open={dialogOpen} onOpenChange={setDialogOpen} existingConnection={connection} />
+      <ConnectWhatsAppEmbeddedFlow open={embeddedFlowOpen} onOpenChange={setEmbeddedFlowOpen} />
     </Card>
   )
 }

@@ -11,6 +11,18 @@ export const createConnectionSchema = z.object({
 })
 export type CreateConnectionInput = z.infer<typeof createConnectionSchema>
 
+export const discoverEmbeddedSignupAssetsSchema = z.object({
+  code: z.string().min(1),
+})
+export type DiscoverEmbeddedSignupAssetsInput = z.infer<typeof discoverEmbeddedSignupAssetsSchema>
+
+export const completeEmbeddedSignupSchema = z.object({
+  secretId: z.string().min(1),
+  wabaId: z.string().min(1),
+  phoneNumberId: z.string().min(1),
+})
+export type CompleteEmbeddedSignupInput = z.infer<typeof completeEmbeddedSignupSchema>
+
 export const updateConnectionSchema = z.object({
   displayName: z.string().min(1).optional(),
   externalAccountId: z.string().nullable().optional(),

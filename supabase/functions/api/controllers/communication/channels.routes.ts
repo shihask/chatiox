@@ -15,6 +15,18 @@ export const routes: RouteDefinition[] = [
     handler: channelsController.create,
   },
   {
+    method: 'POST',
+    pattern: new URLPattern({ pathname: '/channel-connections/whatsapp/embedded-signup/discover' }),
+    tier: 'workspace',
+    handler: channelsController.discoverEmbeddedSignupAssets,
+  },
+  {
+    method: 'POST',
+    pattern: new URLPattern({ pathname: '/channel-connections/whatsapp/embedded-signup/complete' }),
+    tier: 'workspace',
+    handler: channelsController.completeEmbeddedSignup,
+  },
+  {
     method: 'PATCH',
     pattern: new URLPattern({ pathname: '/channel-connections/:id' }),
     tier: 'workspace',
