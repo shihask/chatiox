@@ -1,6 +1,6 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { createServiceRoleClient } from '../../../_shared/supabaseClient.ts'
-import { InternalError, NotFoundError, mapPostgrestError } from '../../../_shared/errors.ts'
+import { ConflictError, InternalError, NotFoundError, mapPostgrestError } from '../../../_shared/errors.ts'
 import type { ChannelType } from '../../../_shared/channelTypes.ts'
 import type { CreateConnectionInput, UpdateConnectionInput } from '../../schemas/communication/channels.schemas.ts'
 import type { ResolvedChannelConnection } from '../../channels/channel.types.ts'
@@ -82,7 +82,12 @@ export async function create(
     })
     .select(CONNECTION_SELECT)
     .single()
-  if (error) throw mapPostgrestError(error)
+  if (error) {
+    if (error.code === '23505' && error.message.includes('uq_channel_connections_type_external_account')) {
+      throw new ConflictError(`This ${input.channelType} account is already connected to another workspace`)
+    }
+    throw mapPostgrestError(error)
+  }
   return data as unknown as ChannelConnectionRow
 }
 
@@ -120,7 +125,12 @@ export async function update(
     .eq('id', id)
     .select(CONNECTION_SELECT)
     .single()
-  if (error) throw mapPostgrestError(error)
+  if (error) {
+    if (error.code === '23505' && error.message.includes('uq_channel_connections_type_external_account')) {
+      throw new ConflictError(`This ${existing.channel_type} account is already connected to another workspace`)
+    }
+    throw mapPostgrestError(error)
+  }
   return data as unknown as ChannelConnectionRow
 }
 
