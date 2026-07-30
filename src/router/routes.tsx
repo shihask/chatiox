@@ -14,6 +14,7 @@ import { WorkspaceSettingsPage } from '@/features/administration/workspace/Works
 import { TeamPage } from '@/features/administration/team-members/TeamPage'
 import { ChannelsPage } from '@/features/communication/channels/ChannelsPage'
 import { InboxPage } from '@/features/communication/inbox/InboxPage'
+import { TemplatesPage } from '@/features/marketing/templates/TemplatesPage'
 import { ComingSoonPage } from '@/components/feedback/ComingSoonPage'
 
 // Flat route list regardless of src/features/ nesting or Sidebar grouping (see navConfig.ts) --
@@ -49,15 +50,7 @@ export const router = createBrowserRouter([
               />
             ),
           },
-          {
-            path: '/templates',
-            element: (
-              <ComingSoonPage
-                moduleName="Templates"
-                features={['Reusable message templates', 'Per-channel variants', 'Approval status tracking']}
-              />
-            ),
-          },
+          { path: '/templates', element: <TemplatesPage /> },
           {
             path: '/broadcast',
             element: (

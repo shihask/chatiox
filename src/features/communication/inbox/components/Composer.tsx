@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FileTextIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSendMessage } from '@/features/communication/inbox/hooks/useSendMessage'
 
@@ -7,6 +8,7 @@ export function Composer({
   disabled,
   disabledReason,
   warning,
+  onOpenTemplateDialog,
 }: {
   conversationId: string
   disabled?: boolean
@@ -16,6 +18,9 @@ export function Composer({
    * a rejected send still surfaces Meta's real error on the message bubble, same as any other
    * failure -- Chatiox doesn't need to pre-emptively guess right when the real system will tell us. */
   warning?: string
+  /** Opens the template picker -- the correct tool precisely when outside the 24h window, but
+   * available regardless (also valid within it). */
+  onOpenTemplateDialog?: () => void
 }) {
   const [draft, setDraft] = useState('')
   const sendMessage = useSendMessage(conversationId)
@@ -54,6 +59,11 @@ export function Composer({
           rows={2}
           className="min-h-10 flex-1 resize-none rounded-md border bg-background px-3 py-2 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         />
+        {onOpenTemplateDialog && (
+          <Button type="button" variant="outline" size="icon" onClick={onOpenTemplateDialog} title="Send template">
+            <FileTextIcon className="h-4 w-4" />
+          </Button>
+        )}
         <Button onClick={() => void handleSend()} disabled={!draft.trim() || sendMessage.isPending}>
           {sendMessage.isPending ? 'Sending...' : 'Send'}
         </Button>

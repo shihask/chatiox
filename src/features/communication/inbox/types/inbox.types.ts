@@ -99,5 +99,6 @@ export interface ListConversationsParams {
 
 export interface SendMessageDTO {
   text?: string
-  template?: { name: string; languageCode?: string; variables?: Record<string, string> }
+  // Ordered/positional, not name-keyed -- matches WhatsApp's {{1}}, {{2}} placeholder convention.
+  template?: { name: string; languageCode: string; variables?: string[] }
 }

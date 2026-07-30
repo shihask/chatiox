@@ -7,6 +7,7 @@ import type {
   MediaUploadResult,
   NormalizedInboundEvent,
   OutboundMessage,
+  ProviderTemplateDefinition,
   ResolvedChannelConnection,
   SendResult,
   TemplateDefinition,
@@ -65,11 +66,6 @@ export class MetaWhatsAppProvider implements IChannelProvider {
   }
 
   async send(message: OutboundMessage, connection: ResolvedChannelConnection): Promise<SendResult> {
-    if (message.template) {
-      throw new Error(
-        'MetaWhatsAppProvider.send() for template messages is not implemented yet -- see the Templates commit in the plan doc\'s WhatsApp provider roadmap',
-      )
-    }
     if (message.attachments && message.attachments.length > 0) {
       throw new Error(
         'MetaWhatsAppProvider.send() for media attachments is not implemented yet -- see the Media commit in the plan doc\'s WhatsApp provider roadmap',
@@ -90,7 +86,12 @@ export class MetaWhatsAppProvider implements IChannelProvider {
     const to = message.to.replace(/^\+/, '') // Meta expects digits only, no leading '+'
 
     try {
-      const response = await client.sendText(to, message.text ?? '')
+      // The service layer (inboxService.sendMessage) always resolves the exact languageCode from
+      // the matching channel_templates row before calling send() -- 'en_US' here is a last-resort
+      // fallback for a direct/test caller that skipped that lookup, not the expected real path.
+      const response = message.template
+        ? await client.sendTemplate(to, message.template.name, message.template.languageCode ?? 'en_US', message.template.variables)
+        : await client.sendText(to, message.text ?? '')
       const providerMessageId = response.messages[0]?.id ?? null
       return { providerMessageId, status: providerMessageId ? 'sent' : 'failed' }
     } catch (err) {
@@ -194,10 +195,16 @@ export class MetaWhatsAppProvider implements IChannelProvider {
     return Promise.resolve(events)
   }
 
-  validateTemplate(_template: TemplateDefinition): Promise<TemplateValidationResult> {
-    throw new Error(
-      'MetaWhatsAppProvider.validateTemplate is not implemented yet -- see the Templates commit in the plan doc\'s WhatsApp provider roadmap',
-    )
+  /** Structural check only (does the supplied variable count match the template's placeholder
+   * count) -- not a Meta API call. Meta's own send-time rejection is still the final authority,
+   * same as every other error this provider surfaces. */
+  validateTemplate(template: TemplateDefinition): Promise<TemplateValidationResult> {
+    const expected = template.bodyVariables?.length ?? 0
+    const errors: string[] = []
+    if (expected > 0 && !template.bodyVariables) {
+      errors.push('Template expects variables but none were provided')
+    }
+    return Promise.resolve({ valid: errors.length === 0, errors: errors.length > 0 ? errors : undefined })
   }
 
   uploadMedia(_file: MediaUploadRequest, _connection: ResolvedChannelConnection): Promise<MediaUploadResult> {
@@ -205,4 +212,36 @@ export class MetaWhatsAppProvider implements IChannelProvider {
       'MetaWhatsAppProvider.uploadMedia is not implemented yet -- see the Media commit in the plan doc\'s WhatsApp provider roadmap',
     )
   }
+
+  /** Lists this connection's templates straight from Meta -- the WABA id lives in
+   * connection.metadata.wabaId (set at connect time, both manual entry and Embedded Signup). */
+  async listApprovedTemplates(connection: ResolvedChannelConnection): Promise<ProviderTemplateDefinition[]> {
+    const accessToken = connection.secret.accessToken
+    const wabaId = connection.metadata.wabaId
+    if (typeof accessToken !== 'string' || !accessToken || typeof wabaId !== 'string' || !wabaId) {
+      throw new Error('WhatsApp connection is missing an access token or WABA ID')
+    }
+
+    const client = new MetaGraphClient({ accessToken, phoneNumberId: connection.externalAccountId ?? '' })
+    const templates = await client.listApprovedTemplates(wabaId)
+
+    return templates.map((template) => ({
+      providerTemplateId: template.id,
+      name: template.name,
+      languageCode: template.language,
+      category: template.category,
+      bodyText: template.bodyText,
+      variableCount: template.bodyText ? new Set(template.bodyText.match(/\{\{\d+\}\}/g) ?? []).size : 0,
+      status: normalizeTemplateStatus(template.status),
+    }))
+  }
+}
+
+/** Meta's real values are uppercase (APPROVED/PENDING/REJECTED), plus at least one undocumented
+ * in-between status (PENDING_DELETION etc.) -- anything unrecognized is treated as 'pending'
+ * rather than assumed sendable. */
+function normalizeTemplateStatus(status: string): 'pending' | 'approved' | 'rejected' {
+  const normalized = status.toLowerCase()
+  if (normalized === 'approved' || normalized === 'rejected') return normalized
+  return 'pending'
 }

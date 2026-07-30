@@ -27,7 +27,9 @@ export interface OutboundMessage {
   channelType: ChannelType
   to: string // the contact_channels.value being addressed
   text?: string
-  template?: { name: string; languageCode?: string; variables?: Record<string, string> }
+  // `variables` is ordered/positional, not name-keyed -- WhatsApp's standard template system has
+  // no semantic variable names, only positional {{1}}, {{2}} placeholders in the template body.
+  template?: { name: string; languageCode?: string; variables?: string[] }
   attachments?: OutboundAttachment[]
   clientReferenceId?: string // caller-supplied correlation id for idempotency/tracing
 }
@@ -68,6 +70,21 @@ export interface TemplateDefinition {
 export interface TemplateValidationResult {
   valid: boolean
   errors?: string[]
+}
+
+/** A template as the provider's own template-management system knows it (e.g. Meta's approved
+ * WhatsApp message templates) -- distinct from `TemplateDefinition`, which is what a caller
+ * supplies when trying to validate/send one. `variableCount` is positional (see OutboundMessage's
+ * `template.variables` comment), derived from the provider's own template body, not asserted by
+ * Chatiox. */
+export interface ProviderTemplateDefinition {
+  providerTemplateId: string | null
+  name: string
+  languageCode: string
+  category: string | null
+  bodyText: string | null
+  variableCount: number
+  status: 'pending' | 'approved' | 'rejected'
 }
 
 export interface MediaUploadRequest {
@@ -125,4 +142,8 @@ export interface IChannelProvider {
   /** Only meaningful for providers with a GET-based verification handshake (Meta's hub.challenge).
    * Optional -- most future providers (Twilio, SES, ...) won't implement this. */
   handleVerificationChallenge?(query: URLSearchParams): string | null
+  /** Lists this connection's approved/pending/rejected templates from the provider's own template-
+   * management system (e.g. Meta Business Manager). Optional -- not every channel has an equivalent
+   * concept (a plain SMS/Email provider likely wouldn't implement this). */
+  listApprovedTemplates?(connection: ResolvedChannelConnection): Promise<ProviderTemplateDefinition[]>
 }

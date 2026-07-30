@@ -59,7 +59,7 @@ export const navConfig: NavEntry[] = [
     label: 'Marketing',
     children: [
       { type: 'link', label: 'Campaigns', path: '/campaigns', status: 'coming-soon', icon: Megaphone },
-      { type: 'link', label: 'Templates', path: '/templates', status: 'coming-soon', icon: FileText },
+      { type: 'link', label: 'Templates', path: '/templates', status: 'real', icon: FileText },
       { type: 'link', label: 'Broadcast', path: '/broadcast', status: 'coming-soon', icon: Send },
     ],
   },

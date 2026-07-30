@@ -19,6 +19,15 @@ interface MetaErrorPayload {
   error?: { message: string; type: string; code: number; error_subcode?: number; fbtrace_id?: string }
 }
 
+export interface MetaMessageTemplateSummary {
+  id: string
+  name: string
+  language: string
+  status: string
+  category: string | null
+  bodyText: string | null
+}
+
 /** Carries Meta's own error code/message so callers can map it into a SendResult without
  * re-parsing the Graph API's error shape themselves. */
 export class MetaGraphApiError extends Error {
@@ -52,6 +61,13 @@ export class MetaGraphClient {
     return json
   }
 
+  private async get<T>(url: string): Promise<T> {
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${this.config.accessToken}` } })
+    const json = (await response.json()) as T & MetaErrorPayload
+    if (!response.ok) throw new MetaGraphApiError(json, response.status)
+    return json
+  }
+
   async sendText(to: string, body: string): Promise<MetaSendMessageResponse> {
     return this.post<MetaSendMessageResponse>(this.messagesUrl, {
       messaging_product: 'whatsapp',
@@ -59,5 +75,48 @@ export class MetaGraphClient {
       type: 'text',
       text: { body },
     })
+  }
+
+  /** `variables` is ordered/positional -- WhatsApp's standard template system has no semantic
+   * variable names, only positional {{1}}, {{2}} placeholders in the approved template body. */
+  async sendTemplate(to: string, name: string, languageCode: string, variables?: string[]): Promise<MetaSendMessageResponse> {
+    return this.post<MetaSendMessageResponse>(this.messagesUrl, {
+      messaging_product: 'whatsapp',
+      to,
+      type: 'template',
+      template: {
+        name,
+        language: { code: languageCode },
+        components:
+          variables && variables.length > 0
+            ? [{ type: 'body', parameters: variables.map((text) => ({ type: 'text', text })) }]
+            : [],
+      },
+    })
+  }
+
+  /** Single page for v1 -- realistic template counts for a test WABA are small; pagination is a
+   * follow-up if a real workspace ever accumulates enough templates for it to matter. */
+  async listApprovedTemplates(wabaId: string): Promise<MetaMessageTemplateSummary[]> {
+    const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${wabaId}/message_templates?fields=name,language,status,category,components`
+    const { data } = await this.get<{
+      data: Array<{
+        id: string
+        name: string
+        language: string
+        status: string
+        category?: string
+        components?: Array<{ type: string; text?: string }>
+      }>
+    }>(url)
+
+    return data.map((template) => ({
+      id: template.id,
+      name: template.name,
+      language: template.language,
+      status: template.status,
+      category: template.category ?? null,
+      bodyText: template.components?.find((c) => c.type === 'BODY')?.text ?? null,
+    }))
   }
 }

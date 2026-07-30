@@ -40,8 +40,10 @@ export const sendMessageSchema = z.object({
   template: z
     .object({
       name: z.string().min(1),
-      languageCode: z.string().optional(),
-      variables: z.record(z.string(), z.string()).optional(),
+      languageCode: z.string().min(1),
+      // Ordered/positional, not name-keyed -- WhatsApp's standard template system has no semantic
+      // variable names, only positional {{1}}, {{2}} placeholders in the approved template body.
+      variables: z.array(z.string()).optional(),
     })
     .optional(),
 }).refine((data) => Boolean(data.text?.trim()) || Boolean(data.template), {

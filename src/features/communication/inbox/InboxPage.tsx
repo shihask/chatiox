@@ -10,6 +10,7 @@ import { ConversationList, type ConversationFilters } from '@/features/communica
 import { ConversationHeader } from '@/features/communication/inbox/components/ConversationHeader'
 import { MessageThread } from '@/features/communication/inbox/components/MessageThread'
 import { Composer } from '@/features/communication/inbox/components/Composer'
+import { SendTemplateDialog } from '@/features/communication/inbox/components/SendTemplateDialog'
 
 const CUSTOMER_CARE_WINDOW_MS = 24 * 60 * 60 * 1000
 
@@ -25,6 +26,7 @@ export function InboxPage() {
   const { conversationId } = useParams<{ conversationId: string }>()
   const navigate = useNavigate()
   const [filters, setFilters] = useState<ConversationFilters>({})
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
 
   const { data: detail, isLoading, isError, error, refetch } = useConversation(conversationId)
   const { data: connections } = useChannelConnections()
@@ -52,7 +54,7 @@ export function InboxPage() {
     : 'This channel connection no longer exists.'
   const composerWarning =
     Boolean(detail) && !withinCareWindow
-      ? 'Outside the 24-hour customer care window -- Meta may require an approved template for this recipient (template support coming soon).'
+      ? 'Outside the 24-hour customer care window -- Meta may require an approved template for this recipient.'
       : undefined
 
   return (
@@ -91,6 +93,13 @@ export function InboxPage() {
                 disabled={composerDisabled}
                 disabledReason={disabledReason}
                 warning={composerWarning}
+                onOpenTemplateDialog={() => { setTemplateDialogOpen(true); }}
+              />
+              <SendTemplateDialog
+                open={templateDialogOpen}
+                onOpenChange={setTemplateDialogOpen}
+                conversationId={detail.conversation.id}
+                channelConnectionId={detail.conversation.channelConnectionId}
               />
             </>
           )}

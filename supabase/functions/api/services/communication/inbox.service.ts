@@ -10,6 +10,7 @@ import type { NormalizedInboundEvent } from '../../channels/channel.types.ts'
 import { getProvider } from '../../channels/providerRegistry.ts'
 import * as inboxRepository from '../../repositories/communication/inbox.repository.ts'
 import * as channelsRepository from '../../repositories/communication/channels.repository.ts'
+import * as templatesRepository from '../../repositories/communication/templates.repository.ts'
 import * as contactsRepository from '../../repositories/crm/contacts.repository.ts'
 import * as notesRepository from '../../repositories/crm/notes.repository.ts'
 import * as tasksRepository from '../../repositories/crm/tasks.repository.ts'
@@ -302,6 +303,43 @@ export async function sendMessage(
   if (!toAddress) throw new NotFoundError('Conversation identity not found')
 
   const provider = getProvider(channelType)
+
+  // A template must be a real, approved, synced-for-this-connection row before anything reaches
+  // Meta -- never let an unapproved/unknown template name through on trust alone.
+  let renderedBody = input.text ?? null
+  let channelTemplateId: string | null = null
+  if (input.template) {
+    const channelTemplate = await templatesRepository.findChannelTemplateByName(
+      ctx.supabase,
+      ctx.workspaceId,
+      connectionRow.id,
+      input.template.name,
+      input.template.languageCode,
+    )
+    if (!channelTemplate) throw new NotFoundError(`Template "${input.template.name}" (${input.template.languageCode}) not found for this connection`)
+    if (channelTemplate.status !== 'approved') {
+      throw new ConflictError(`Template "${input.template.name}" is not approved yet (status: ${channelTemplate.status})`)
+    }
+
+    const validation = await provider.validateTemplate({
+      name: input.template.name,
+      languageCode: input.template.languageCode,
+      bodyVariables: channelTemplate.variables as string[],
+    })
+    if (!validation.valid) {
+      throw new BadRequestError(validation.errors?.join('; ') ?? 'Template variables are invalid')
+    }
+
+    renderedBody =
+      channelTemplate.body && input.template.variables
+        ? input.template.variables.reduce<string>(
+            (body, value, index) => body.replaceAll(`{{${index + 1}}}`, value),
+            channelTemplate.body,
+          )
+        : (channelTemplate.body ?? renderedBody)
+    channelTemplateId = channelTemplate.id
+  }
+
   const result = await provider.send(
     {
       tenantId: ctx.workspaceId,
@@ -318,7 +356,8 @@ export async function sendMessage(
     channelConnectionId: connectionRow.id,
     direction: 'outbound',
     messageType: input.template ? 'template' : 'text',
-    body: input.text ?? null,
+    body: renderedBody,
+    channelTemplateId,
     providerMessageId: result.providerMessageId,
     status: result.status,
     errorCode: result.error?.code ?? null,

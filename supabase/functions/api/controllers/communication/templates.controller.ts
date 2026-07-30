@@ -33,3 +33,15 @@ export const listChannelTemplates: WorkspaceHandler = async (req, { ctx, params 
   const channelTemplates = await templatesService.listChannelTemplates(ctx, id)
   return jsonOk(channelTemplates)
 }
+
+export const listChannelTemplatesByConnection: WorkspaceHandler = async (req, { ctx, params }) => {
+  const connectionId = requireParam(params, 'connectionId')
+  const channelTemplates = await templatesService.listChannelTemplatesByConnection(ctx, connectionId)
+  return jsonOk(channelTemplates)
+}
+
+export const syncChannelTemplates: WorkspaceHandler = async (req, { ctx, params }) => {
+  const connectionId = requireParam(params, 'connectionId')
+  const channelTemplates = await templatesService.syncChannelTemplates(ctx, connectionId)
+  return jsonOk(channelTemplates)
+}
