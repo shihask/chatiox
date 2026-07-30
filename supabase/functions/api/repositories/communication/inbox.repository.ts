@@ -29,8 +29,12 @@ export interface MessageAttachmentRow {
   message_id: string
   content_type: string
   storage_path: string
+  provider_media_id: string | null
   file_name: string | null
   file_size_bytes: number | null
+  width: number | null
+  height: number | null
+  duration_seconds: number | null
 }
 
 export interface MessageRow {
@@ -386,18 +390,35 @@ export async function insertAttachment(
   supabase: SupabaseClient,
   workspaceId: string,
   messageId: string,
-  input: { contentType: string; storagePath: string; fileName?: string; fileSizeBytes?: number; providerMediaId?: string },
-): Promise<void> {
-  const { error } = await supabase.from('message_attachments').insert({
-    tenant_id: workspaceId,
-    message_id: messageId,
-    content_type: input.contentType,
-    storage_path: input.storagePath,
-    file_name: input.fileName ?? null,
-    file_size_bytes: input.fileSizeBytes ?? null,
-    provider_media_id: input.providerMediaId ?? null,
-  })
+  input: {
+    contentType: string
+    storagePath: string
+    fileName?: string
+    fileSizeBytes?: number
+    providerMediaId?: string
+    width?: number
+    height?: number
+    durationSeconds?: number
+  },
+): Promise<MessageAttachmentRow> {
+  const { data, error } = await supabase
+    .from('message_attachments')
+    .insert({
+      tenant_id: workspaceId,
+      message_id: messageId,
+      content_type: input.contentType,
+      storage_path: input.storagePath,
+      file_name: input.fileName ?? null,
+      file_size_bytes: input.fileSizeBytes ?? null,
+      provider_media_id: input.providerMediaId ?? null,
+      width: input.width ?? null,
+      height: input.height ?? null,
+      duration_seconds: input.durationSeconds ?? null,
+    })
+    .select('*')
+    .single()
   if (error) throw mapPostgrestError(error)
+  return data as MessageAttachmentRow
 }
 
 const STATUS_RANK: Record<string, number> = { queued: 0, sent: 1, delivered: 2, read: 3 }

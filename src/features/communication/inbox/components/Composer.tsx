@@ -1,7 +1,10 @@
-import { useState } from 'react'
-import { FileTextIcon } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { FileTextIcon, ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSendMessage } from '@/features/communication/inbox/hooks/useSendMessage'
+import { useUploadAttachment } from '@/features/communication/inbox/hooks/useUploadAttachment'
+
+const ACCEPTED_IMAGE_TYPES = 'image/jpeg,image/png,image/webp'
 
 export function Composer({
   conversationId,
@@ -23,13 +26,26 @@ export function Composer({
   onOpenTemplateDialog?: () => void
 }) {
   const [draft, setDraft] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const sendMessage = useSendMessage(conversationId)
+  const uploadAttachment = useUploadAttachment(conversationId)
 
   async function handleSend() {
     if (!draft.trim()) return
     const text = draft.trim()
     setDraft('')
     await sendMessage.mutateAsync({ text })
+  }
+
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow picking the same file again later
+    if (!file) return
+
+    const caption = draft.trim()
+    setDraft('')
+    const uploaded = await uploadAttachment.mutateAsync(file)
+    await sendMessage.mutateAsync({ text: caption || undefined, attachments: [uploaded] })
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -59,13 +75,30 @@ export function Composer({
           rows={2}
           className="min-h-10 flex-1 resize-none rounded-md border bg-background px-3 py-2 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_IMAGE_TYPES}
+          className="hidden"
+          onChange={(e) => void handleFileSelected(e)}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          title="Send image"
+          disabled={uploadAttachment.isPending || sendMessage.isPending}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <ImageIcon className="h-4 w-4" />
+        </Button>
         {onOpenTemplateDialog && (
           <Button type="button" variant="outline" size="icon" onClick={onOpenTemplateDialog} title="Send template">
             <FileTextIcon className="h-4 w-4" />
           </Button>
         )}
         <Button onClick={() => void handleSend()} disabled={!draft.trim() || sendMessage.isPending}>
-          {sendMessage.isPending ? 'Sending...' : 'Send'}
+          {uploadAttachment.isPending ? 'Uploading...' : sendMessage.isPending ? 'Sending...' : 'Send'}
         </Button>
       </div>
     </div>

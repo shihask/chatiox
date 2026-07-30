@@ -39,6 +39,11 @@ export interface MessageAttachmentDTO {
   storagePath: string
   fileName: string | null
   fileSizeBytes: number | null
+  width: number | null
+  height: number | null
+  durationSeconds: number | null
+  /** A short-lived Supabase Storage signed URL, generated server-side at read time. */
+  url?: string
 }
 
 export interface MessageDTO {
@@ -101,4 +106,15 @@ export interface SendMessageDTO {
   text?: string
   // Ordered/positional, not name-keyed -- matches WhatsApp's {{1}}, {{2}} placeholder convention.
   template?: { name: string; languageCode: string; variables?: string[] }
+  // Collection-shaped even though WhatsApp only allows one today -- see the backend schema comment.
+  attachments?: UploadedAttachmentDTO[]
+}
+
+/** Returned by `POST /conversations/:id/attachments` -- feeds directly into `SendMessageDTO.attachments`. */
+export interface UploadedAttachmentDTO {
+  storagePath: string
+  providerMediaId: string
+  contentType: string
+  filename: string | null
+  fileSizeBytes: number
 }

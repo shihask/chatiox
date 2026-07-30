@@ -7,6 +7,7 @@ import type {
   ListConversationsParams,
   MessageDTO,
   SendMessageDTO,
+  UploadedAttachmentDTO,
 } from '@/features/communication/inbox/types/inbox.types'
 
 interface UpdateConversationDTO {
@@ -46,6 +47,11 @@ export const inboxApi = {
     apiClient.getPaginated<MessageDTO>(`/conversations/${id}/messages`, { page: 1, pageSize: 100 }),
   sendMessage: (id: string, input: SendMessageDTO) =>
     apiClient.post<MessageDTO>(`/conversations/${id}/messages`, input),
+  uploadAttachment: (conversationId: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.postForm<UploadedAttachmentDTO>(`/conversations/${conversationId}/attachments`, form)
+  },
   listConversationNotes: (id: string) => apiClient.get<ConversationNoteDTO[]>(`/conversations/${id}/notes`),
   createConversationNote: (id: string, body: string) =>
     apiClient.post<ConversationNoteDTO>(`/conversations/${id}/notes`, { body }),

@@ -46,6 +46,12 @@ export function mapAttachmentRowToDTO(row: MessageAttachmentRow): MessageAttachm
     storagePath: row.storage_path,
     fileName: row.file_name,
     fileSizeBytes: row.file_size_bytes,
+    width: row.width,
+    height: row.height,
+    durationSeconds: row.duration_seconds,
+    // Populated by the service layer (a short-lived Supabase Storage signed URL, generated at
+    // read time, never persisted) -- always undefined straight out of the mapper.
+    url: undefined,
   }
 }
 

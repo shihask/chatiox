@@ -6,6 +6,8 @@ export interface MetaWebhookMessage {
   timestamp: string // unix seconds, as a string
   type: string // 'text' | 'image' | 'video' | 'audio' | 'document' | 'location' | 'interactive' | ...
   text?: { body: string }
+  // Video/audio/document fast-follow onto the same shape (id + mime_type, document adds filename).
+  image?: { id: string; mime_type: string }
 }
 
 export interface MetaWebhookStatus {

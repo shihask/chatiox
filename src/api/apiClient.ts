@@ -24,6 +24,9 @@ interface RequestOptions {
   method?: string
   body?: unknown
   query?: Record<string, string | number | boolean | undefined>
+  /** Skips JSON.stringify + the Content-Type header -- the browser sets its own multipart
+   * boundary for a FormData body, which a fixed `application/json` header would break. */
+  isFormData?: boolean
   /** internal: prevents infinite refresh loops */
   _isRetry?: boolean
 }
@@ -71,9 +74,9 @@ async function requestRaw<TEnvelope>(
   path: string,
   options: RequestOptions = {},
 ): Promise<TEnvelope | undefined> {
-  const { method = 'GET', body, query, _isRetry } = options
+  const { method = 'GET', body, query, isFormData, _isRetry } = options
 
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const headers: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' }
   const accessToken = tokenStorage.getAccessToken()
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`
   const workspaceId = tokenStorage.getCurrentWorkspaceId()
@@ -82,7 +85,7 @@ async function requestRaw<TEnvelope>(
   const response = await fetch(buildUrl(path, query), {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: isFormData ? (body as FormData) : body !== undefined ? JSON.stringify(body) : undefined,
   })
 
   if (response.status === 401 && !_isRetry && path !== '/auth/refresh') {
@@ -125,6 +128,7 @@ export const apiClient = {
   getPaginated: <T>(path: string, query?: RequestOptions['query']) =>
     requestPaginated<T>(path, { query }),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
+  postForm: <T>(path: string, body: FormData) => request<T>(path, { method: 'POST', body, isFormData: true }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }

@@ -36,6 +36,12 @@ export interface MessageAttachmentDTO {
   storagePath: string
   fileName: string | null
   fileSizeBytes: number | null
+  width: number | null
+  height: number | null
+  durationSeconds: number | null
+  /** A short-lived Supabase Storage signed URL, generated at read time by the service layer --
+   * never persisted (the bucket is private; this is the only way the frontend can display it). */
+  url?: string
 }
 
 export interface MessageDTO {

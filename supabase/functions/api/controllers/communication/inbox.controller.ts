@@ -74,6 +74,21 @@ export const sendMessage: WorkspaceHandler = async (req, { ctx, params }) => {
   return jsonCreated(message)
 }
 
+export const uploadAttachment: WorkspaceHandler = async (req, { ctx, params }) => {
+  const id = requireParam(params, 'id')
+  const form = await req.formData()
+  const file = form.get('file')
+  if (!(file instanceof File)) throw new BadRequestError('No file provided')
+
+  const data = new Uint8Array(await file.arrayBuffer())
+  const result = await inboxService.uploadAttachment(ctx, id, {
+    contentType: file.type || 'application/octet-stream',
+    data,
+    filename: file.name || undefined,
+  })
+  return jsonCreated(result)
+}
+
 export const listConversationNotes: WorkspaceHandler = async (req, { ctx, params }) => {
   const id = requireParam(params, 'id')
   const notes = await inboxService.listConversationNotes(ctx, id)

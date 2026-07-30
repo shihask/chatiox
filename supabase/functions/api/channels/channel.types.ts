@@ -52,7 +52,11 @@ export interface NormalizedInboundEvent {
   from: string // matched against channel_identities.value (post-normalization)
   type: 'message' | 'status_update' | 'unknown'
   text?: string
-  attachments?: Array<{ contentType: string; url: string }>
+  // `mediaId` (not a URL) -- providers are stateless and receiveWebhook() has no access to a
+  // resolved connection/access-token, so resolving this into something downloadable is a separate
+  // step (IChannelProvider.resolveMediaForDownload?, called by the service layer, which does have
+  // the connection).
+  attachments?: Array<{ contentType: string; mediaId: string; filename?: string }>
   providerEventId: string // for idempotency dedup
   providerMessageId?: string // present on status_update events, to find the original message
   status?: 'sent' | 'delivered' | 'read' | 'failed' // present on status_update events
@@ -146,4 +150,12 @@ export interface IChannelProvider {
    * management system (e.g. Meta Business Manager). Optional -- not every channel has an equivalent
    * concept (a plain SMS/Email provider likely wouldn't implement this). */
   listApprovedTemplates?(connection: ResolvedChannelConnection): Promise<ProviderTemplateDefinition[]>
+  /** Resolves a NormalizedInboundEvent attachment's mediaId into something the service layer can
+   * actually download -- e.g. Meta's media URLs are short-lived and require the same Bearer token
+   * as everything else, so `headers` carries whatever the download fetch() needs. Optional --
+   * channels whose inbound webhook already carries a plain fetchable URL wouldn't need this. */
+  resolveMediaForDownload?(
+    mediaId: string,
+    connection: ResolvedChannelConnection,
+  ): Promise<{ url: string; headers?: Record<string, string> }>
 }

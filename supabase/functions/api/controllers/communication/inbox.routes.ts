@@ -51,6 +51,12 @@ export const routes: RouteDefinition[] = [
     handler: inboxController.sendMessage,
   },
   {
+    method: 'POST',
+    pattern: new URLPattern({ pathname: '/conversations/:id/attachments' }),
+    tier: 'workspace',
+    handler: inboxController.uploadAttachment,
+  },
+  {
     method: 'GET',
     pattern: new URLPattern({ pathname: '/conversations/:id/notes' }),
     tier: 'workspace',

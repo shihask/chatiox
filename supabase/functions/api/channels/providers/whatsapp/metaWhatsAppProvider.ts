@@ -17,6 +17,7 @@ import type {
 import { MetaGraphApiError, MetaGraphClient } from './metaGraphClient.ts'
 import type { MetaWebhookPayload } from './metaWebhookPayload.ts'
 import { normalizeChannelValue } from '../../../../_shared/channelValue.ts'
+import { getAttachmentKind } from '../../../../_shared/attachmentKind.ts'
 
 async function computeHmacSha256Hex(secret: string, message: string): Promise<string> {
   const encoder = new TextEncoder()
@@ -66,10 +67,19 @@ export class MetaWhatsAppProvider implements IChannelProvider {
   }
 
   async send(message: OutboundMessage, connection: ResolvedChannelConnection): Promise<SendResult> {
-    if (message.attachments && message.attachments.length > 0) {
-      throw new Error(
-        'MetaWhatsAppProvider.send() for media attachments is not implemented yet -- see the Media commit in the plan doc\'s WhatsApp provider roadmap',
-      )
+    const attachment = message.attachments?.[0]
+    if (attachment) {
+      const kind = getAttachmentKind(attachment.contentType)
+      // Images only this pass -- Documents/Audio/Video fast-follow on the same send path once
+      // their own upload validation + composer UI exist (see the plan doc's Media phase).
+      if (kind !== 'image') {
+        throw new Error(`MetaWhatsAppProvider.send() for ${kind} attachments is not implemented yet`)
+      }
+      if (attachment.source.kind !== 'mediaId') {
+        throw new Error(
+          'MetaWhatsAppProvider.send() only supports attachments already uploaded to Meta (source.kind === "mediaId") -- see the attachment upload endpoint',
+        )
+      }
     }
 
     const accessToken = connection.secret.accessToken
@@ -89,9 +99,12 @@ export class MetaWhatsAppProvider implements IChannelProvider {
       // The service layer (inboxService.sendMessage) always resolves the exact languageCode from
       // the matching channel_templates row before calling send() -- 'en_US' here is a last-resort
       // fallback for a direct/test caller that skipped that lookup, not the expected real path.
-      const response = message.template
-        ? await client.sendTemplate(to, message.template.name, message.template.languageCode ?? 'en_US', message.template.variables)
-        : await client.sendText(to, message.text ?? '')
+      const response =
+        attachment && attachment.source.kind === 'mediaId'
+          ? await client.sendMedia(to, 'image', attachment.source.mediaId, { caption: message.text, filename: attachment.filename })
+          : message.template
+            ? await client.sendTemplate(to, message.template.name, message.template.languageCode ?? 'en_US', message.template.variables)
+            : await client.sendText(to, message.text ?? '')
       const providerMessageId = response.messages[0]?.id ?? null
       return { providerMessageId, status: providerMessageId ? 'sent' : 'failed' }
     } catch (err) {
@@ -158,16 +171,24 @@ export class MetaWhatsAppProvider implements IChannelProvider {
         if (!value) continue
 
         for (const message of value.messages ?? []) {
+          // Images only this pass -- Documents/Audio/Video still become a visible placeholder
+          // rather than being silently dropped, same as before their own fast-follow lands.
+          const isImage = message.type === 'image' && message.image
           const text =
             message.type === 'text' && message.text
               ? message.text.body
-              : `[Unsupported message type: ${message.type} -- media handling not implemented yet]`
+              : isImage
+                ? undefined
+                : `[Unsupported message type: ${message.type} -- media handling not implemented yet]`
 
           events.push({
             channelType: 'whatsapp',
             from: normalizeChannelValue('whatsapp', message.from),
             type: 'message',
             text,
+            attachments: isImage && message.image
+              ? [{ contentType: message.image.mime_type, mediaId: message.image.id }]
+              : undefined,
             providerEventId: message.id,
             occurredAt: new Date(Number(message.timestamp) * 1000).toISOString(),
           })
@@ -207,10 +228,32 @@ export class MetaWhatsAppProvider implements IChannelProvider {
     return Promise.resolve({ valid: errors.length === 0, errors: errors.length > 0 ? errors : undefined })
   }
 
-  uploadMedia(_file: MediaUploadRequest, _connection: ResolvedChannelConnection): Promise<MediaUploadResult> {
-    throw new Error(
-      'MetaWhatsAppProvider.uploadMedia is not implemented yet -- see the Media commit in the plan doc\'s WhatsApp provider roadmap',
-    )
+  async uploadMedia(file: MediaUploadRequest, connection: ResolvedChannelConnection): Promise<MediaUploadResult> {
+    const accessToken = connection.secret.accessToken
+    const phoneNumberId = connection.externalAccountId
+    if (typeof accessToken !== 'string' || !accessToken || !phoneNumberId) {
+      throw new Error('WhatsApp connection is missing an access token or phone number ID')
+    }
+
+    const client = new MetaGraphClient({ accessToken, phoneNumberId })
+    const result = await client.uploadMedia(file.data, file.contentType, file.filename)
+    return { mediaId: result.id }
+  }
+
+  /** Meta's media URLs are short-lived and still require the same Bearer token as everything
+   * else -- `headers` carries that so the service layer's download fetch() actually authenticates. */
+  async resolveMediaForDownload(
+    mediaId: string,
+    connection: ResolvedChannelConnection,
+  ): Promise<{ url: string; headers?: Record<string, string> }> {
+    const accessToken = connection.secret.accessToken
+    if (typeof accessToken !== 'string' || !accessToken) {
+      throw new Error('WhatsApp connection is missing an access token')
+    }
+
+    const client = new MetaGraphClient({ accessToken, phoneNumberId: connection.externalAccountId ?? '' })
+    const { url } = await client.getMediaUrl(mediaId)
+    return { url, headers: { Authorization: `Bearer ${accessToken}` } }
   }
 
   /** Lists this connection's templates straight from Meta -- the WABA id lives in

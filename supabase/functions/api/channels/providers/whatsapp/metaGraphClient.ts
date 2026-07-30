@@ -68,6 +68,50 @@ export class MetaGraphClient {
     return json
   }
 
+  /** Uploads bytes to Meta first (WhatsApp only ever sends media it already hosts, never an
+   * arbitrary external URL for outbound) -- returns a mediaId to reference in a later send. */
+  async uploadMedia(data: Uint8Array, contentType: string, filename?: string): Promise<{ id: string }> {
+    const form = new FormData()
+    form.append('messaging_product', 'whatsapp')
+    form.append('file', new Blob([data], { type: contentType }), filename ?? 'upload')
+
+    const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${this.config.phoneNumberId}/media`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.config.accessToken}` },
+      body: form,
+    })
+    const json = (await response.json()) as { id?: string } & MetaErrorPayload
+    if (!response.ok || !json.id) throw new MetaGraphApiError(json, response.status)
+    return { id: json.id }
+  }
+
+  /** Meta's media URLs are short-lived AND still require the Bearer token to actually fetch the
+   * bytes -- this only resolves the id into a URL, it doesn't download anything itself. */
+  async getMediaUrl(mediaId: string): Promise<{ url: string; mimeType: string; fileSize: number }> {
+    const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${mediaId}`
+    const json = await this.get<{ url: string; mime_type: string; file_size: number }>(url)
+    return { url: json.url, mimeType: json.mime_type, fileSize: json.file_size }
+  }
+
+  async sendMedia(
+    to: string,
+    kind: 'image' | 'document' | 'audio' | 'video',
+    mediaId: string,
+    options?: { caption?: string; filename?: string },
+  ): Promise<MetaSendMessageResponse> {
+    const mediaObject: Record<string, unknown> = { id: mediaId }
+    if (options?.caption) mediaObject.caption = options.caption
+    if (kind === 'document' && options?.filename) mediaObject.filename = options.filename
+
+    return this.post<MetaSendMessageResponse>(this.messagesUrl, {
+      messaging_product: 'whatsapp',
+      to,
+      type: kind,
+      [kind]: mediaObject,
+    })
+  }
+
   async sendText(to: string, body: string): Promise<MetaSendMessageResponse> {
     return this.post<MetaSendMessageResponse>(this.messagesUrl, {
       messaging_product: 'whatsapp',

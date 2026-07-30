@@ -3,6 +3,7 @@ import { recordAudit } from '../../../_shared/audit.ts'
 import { emit } from '../../../_shared/events.ts'
 import { requireRole } from '../../../_shared/rbac.ts'
 import { BadRequestError, ConflictError, NotFoundError } from '../../../_shared/errors.ts'
+import { validateAttachment } from '../../../_shared/validateAttachment.ts'
 import type { Page } from '../../../_shared/repository.ts'
 import type { WorkspaceRequestContext } from '../../../_shared/http/requestContext.ts'
 import type { ChannelType } from '../../../_shared/channelTypes.ts'
@@ -18,6 +19,7 @@ import { mapContactRowToDTO } from '../../mappers/crm/contacts.mapper.ts'
 import { mapNoteRowToDTO } from '../../mappers/crm/notes.mapper.ts'
 import { mapTaskRowToDTO } from '../../mappers/crm/tasks.mapper.ts'
 import {
+  mapAttachmentRowToDTO,
   mapConversationNoteRowToDTO,
   mapConversationRowToDTO,
   mapMessageRowToDTO,
@@ -265,13 +267,34 @@ export async function createContactForConversation(
   return mapConversationRowToDTO(row)
 }
 
+/** The message-attachments bucket is private -- this is the only way the frontend can ever display
+ * one. Generated at read time, never persisted (a stale/expired URL is simply regenerated on the
+ * next fetch, no background refresh job needed). */
+const ATTACHMENT_URL_TTL_SECONDS = 60 * 60
+
+async function enrichAttachmentUrls(supabase: SupabaseClient, messages: MessageDTO[]): Promise<MessageDTO[]> {
+  const allAttachments = messages.flatMap((m) => m.attachments)
+  if (allAttachments.length === 0) return messages
+
+  await Promise.all(
+    allAttachments.map(async (attachment) => {
+      const { data } = await supabase.storage
+        .from('message-attachments')
+        .createSignedUrl(attachment.storagePath, ATTACHMENT_URL_TTL_SECONDS)
+      attachment.url = data?.signedUrl
+    }),
+  )
+  return messages
+}
+
 export async function listMessages(
   ctx: WorkspaceRequestContext,
   conversationId: string,
   params: { page: number; pageSize: number },
 ): Promise<Page<MessageDTO>> {
   const page = await inboxRepository.listMessages(ctx.supabase, ctx.workspaceId, conversationId, params)
-  return { ...page, items: page.items.map(mapMessageRowToDTO) }
+  const items = await enrichAttachmentUrls(ctx.supabase, page.items.map(mapMessageRowToDTO))
+  return { ...page, items }
 }
 
 export async function sendMessage(
@@ -340,6 +363,11 @@ export async function sendMessage(
     channelTemplateId = channelTemplate.id
   }
 
+  // An attachment must already be uploaded (POST /conversations/:id/attachments) before it can be
+  // referenced here -- the provider never receives raw bytes from sendMessage, only a mediaId it
+  // already has from the upload step.
+  const attachment = input.attachments?.[0]
+
   const result = await provider.send(
     {
       tenantId: ctx.workspaceId,
@@ -347,6 +375,9 @@ export async function sendMessage(
       to: toAddress,
       text: input.text,
       template: input.template,
+      attachments: attachment
+        ? [{ contentType: attachment.contentType, source: { kind: 'mediaId', mediaId: attachment.providerMediaId }, filename: attachment.filename }]
+        : undefined,
     },
     resolvedConnection,
   )
@@ -355,7 +386,7 @@ export async function sendMessage(
     conversationId,
     channelConnectionId: connectionRow.id,
     direction: 'outbound',
-    messageType: input.template ? 'template' : 'text',
+    messageType: input.template ? 'template' : attachment ? 'media' : 'text',
     body: renderedBody,
     channelTemplateId,
     providerMessageId: result.providerMessageId,
@@ -364,6 +395,19 @@ export async function sendMessage(
     errorMessage: result.error?.message ?? null,
     sentByUserId: ctx.userId,
   })
+
+  let insertedAttachment: Awaited<ReturnType<typeof inboxRepository.insertAttachment>> | null = null
+  if (attachment) {
+    // Storage already has the bytes from the upload step -- no re-download, just record the
+    // reference against the now-real message id.
+    insertedAttachment = await inboxRepository.insertAttachment(ctx.supabase, ctx.workspaceId, row.id, {
+      contentType: attachment.contentType,
+      storagePath: attachment.storagePath,
+      fileName: attachment.filename,
+      fileSizeBytes: attachment.fileSizeBytes,
+      providerMediaId: attachment.providerMediaId,
+    })
+  }
 
   await recordAudit(ctx.supabase, {
     workspaceId: ctx.workspaceId,
@@ -382,7 +426,10 @@ export async function sendMessage(
     occurredAt: new Date().toISOString(),
   })
 
-  return mapMessageRowToDTO(row)
+  const messageDTO = mapMessageRowToDTO(row)
+  if (insertedAttachment) messageDTO.attachments = [mapAttachmentRowToDTO(insertedAttachment)]
+  const [enriched] = await enrichAttachmentUrls(ctx.supabase, [messageDTO])
+  return enriched
 }
 
 export async function listConversationNotes(
@@ -413,6 +460,58 @@ export async function createConversationNote(
   return mapConversationNoteRowToDTO(row)
 }
 
+export interface UploadAttachmentResult {
+  storagePath: string
+  providerMediaId: string
+  contentType: string
+  fileSizeBytes: number
+  filename: string | null
+}
+
+/** Step 1 of sending media: uploads to the provider (Meta, for WhatsApp -- it only ever sends
+ * media it already hosts, never an arbitrary external URL) AND to Chatiox's own private Storage
+ * bucket in the same request, so Chatiox never has to re-fetch from the provider later. The
+ * result feeds directly into sendMessage's `attachments` input -- this never creates a message
+ * itself, matching "media is still just another message through the one send pipeline". */
+export async function uploadAttachment(
+  ctx: WorkspaceRequestContext,
+  conversationId: string,
+  file: { contentType: string; data: Uint8Array; filename?: string },
+): Promise<UploadAttachmentResult> {
+  requireRole(ctx, [...WRITE_ROLES])
+  validateAttachment({ contentType: file.contentType, sizeBytes: file.data.byteLength, filename: file.filename })
+
+  const conversation = await inboxRepository.getByIdOrThrow(ctx.supabase, ctx.workspaceId, conversationId)
+  const channelType = conversation.channel_type as ChannelType
+  const connectionRow = await channelsRepository.getByIdOrThrow(ctx.supabase, ctx.workspaceId, conversation.channel_connection_id)
+  if (connectionRow.status !== 'connected') {
+    throw new ConflictError(`${channelType} isn't connected for this workspace yet`)
+  }
+  const resolvedConnection = await channelsRepository.resolveForSending(connectionRow.id)
+  if (!resolvedConnection) throw new ConflictError(`${channelType} isn't connected for this workspace yet`)
+
+  const provider = getProvider(channelType)
+  const { mediaId } = await provider.uploadMedia(
+    { tenantId: ctx.workspaceId, contentType: file.contentType, data: file.data, filename: file.filename },
+    resolvedConnection,
+  )
+
+  const extension = file.contentType.split('/')[1] ?? 'bin'
+  const storagePath = `${ctx.workspaceId}/uploads/${crypto.randomUUID()}.${extension}`
+  const { error } = await ctx.supabase.storage
+    .from('message-attachments')
+    .upload(storagePath, file.data, { contentType: file.contentType })
+  if (error) throw new Error(`Failed to store attachment: ${error.message}`)
+
+  return {
+    storagePath,
+    providerMediaId: mediaId,
+    contentType: file.contentType,
+    fileSizeBytes: file.data.byteLength,
+    filename: file.filename ?? null,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Inbound ingest -- called from communication/webhooks.controller.ts with a service-role client,
 // no WorkspaceRequestContext (there's no authenticated user for a provider webhook).
@@ -423,8 +522,9 @@ async function downloadAndStoreAttachment(
   tenantId: string,
   messageId: string,
   attachment: { contentType: string; url: string },
+  headers?: Record<string, string>,
 ): Promise<string> {
-  const response = await fetch(attachment.url)
+  const response = await fetch(attachment.url, { headers })
   if (!response.ok) throw new Error(`Failed to download attachment: ${response.status}`)
   const bytes = new Uint8Array(await response.arrayBuffer())
   const extension = attachment.contentType.split('/')[1] ?? 'bin'
@@ -484,13 +584,32 @@ export async function ingestInboundEvent(
       },
     )
 
-    if (isNew && event.attachments) {
+    if (isNew && event.attachments && event.attachments.length > 0) {
+      // Only resolved when actually needed -- avoids an extra Vault round-trip for the common
+      // text-only-message case.
+      const provider = getProvider(connection.channelType)
+      const resolvedConnection = provider.resolveMediaForDownload
+        ? await channelsRepository.resolveForSending(connection.id)
+        : null
+
       for (const attachment of event.attachments) {
         try {
-          const storagePath = await downloadAndStoreAttachment(serviceRoleClient, connection.tenantId, message.id, attachment)
+          if (!provider.resolveMediaForDownload || !resolvedConnection) {
+            throw new Error(`${connection.channelType} provider cannot resolve media for download`)
+          }
+          const { url, headers } = await provider.resolveMediaForDownload(attachment.mediaId, resolvedConnection)
+          const storagePath = await downloadAndStoreAttachment(
+            serviceRoleClient,
+            connection.tenantId,
+            message.id,
+            { contentType: attachment.contentType, url },
+            headers,
+          )
           await inboxRepository.insertAttachment(serviceRoleClient, connection.tenantId, message.id, {
             contentType: attachment.contentType,
             storagePath,
+            fileName: attachment.filename,
+            providerMediaId: attachment.mediaId,
           })
         } catch (err) {
           console.error('[inbox] failed to download/store attachment', err)

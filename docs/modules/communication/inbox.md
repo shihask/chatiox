@@ -10,7 +10,11 @@ contact linking (existing contact search or create-new) are all real and wired t
 this module already had. Conversation-scoped internal notes (`conversation_notes`) are schema/API-
 complete but have no UI yet -- deliberately deferred, not part of this pass's explicit scope.
 Real-time updates are a simple `refetchInterval` poll (~5s) for now; a genuine Supabase Realtime
-subscription is a separate, later roadmap item.
+subscription is a separate, later roadmap item. Media attachments (**images only this pass** --
+Documents/Audio/Video are fast-follows on the same plumbing) are also fully implemented end to
+end: upload, send, receive, thumbnail, and full-size viewer -- curl- and Playwright-verified,
+including a real inbound image seeded into Storage and a real outbound upload reaching Meta's
+actual `/media` endpoint (rejected only by the test connection's fake token).
 
 ## Model
 
@@ -111,6 +115,42 @@ event -- see `_shared/events.ts`) which will feed the Contact Timeline via the s
 `crm/timeline.md`) once that subscriber exists -- Inbox does not maintain its own separate activity
 feed.
 
+## Media attachments (images)
+
+Attachments stay collection-shaped everywhere (`attachments: Attachment[]`, never a singular
+field) even though WhatsApp only allows one per message today -- the cap is an explicit,
+WhatsApp-specific `.max(1, 'Only one attachment is supported per message right now')` at the
+schema level, not baked into the type shape, so a future multi-attachment channel (email) doesn't
+need a DTO change. Kind (`'image' | 'document' | 'audio' | 'video' | 'other'`) is derived once from
+MIME type via a shared `getAttachmentKind()` helper (mirrored in `_shared/attachmentKind.ts` and
+`src/lib/attachmentKind.ts`), not scattered `contentType.startsWith(...)` checks.
+
+**Inbound**: `receiveWebhook` has no access to a resolved connection/access-token by design
+(providers are stateless plugins). Rather than widen its signature, `NormalizedInboundEvent`
+attachments carry `{contentType, mediaId, filename?}`, and a new optional interface method,
+`IChannelProvider.resolveMediaForDownload?(mediaId, connection)`, is called by
+`ingestInboundEvent` (which already resolves the connection) right before downloading -- same
+"additive, optional interface method" precedent as `listApprovedTemplates?`. The downloaded bytes
+are re-uploaded into the private `message-attachments` Storage bucket immediately; a provider's
+media URL is never served directly (it's short-lived and Bearer-token-gated).
+
+**Outbound**: a dedicated `POST /conversations/:id/attachments` (multipart) uploads the file to
+both Meta (`provider.uploadMedia()` -> a provider media id) and Chatiox's own Storage in one
+request, returning a reference the existing `POST /conversations/:id/messages` then takes via an
+`attachments` field -- no parallel send path; every message still gets the same
+validation/status/error handling. `_shared/validateAttachment.ts` rejects unsupported kinds/sizes
+before a file ever reaches Meta (currently only `image`, up to 5MB, jpeg/png/webp).
+
+**Delivery to the frontend**: the bucket is private; `MessageAttachmentDTO.url` is a short-lived
+Supabase Storage signed URL generated at read time (`enrichAttachmentUrls`, ~1h TTL) and never
+persisted -- expiry is a non-issue since it's regenerated on every fetch.
+
+**Rendering**: `MessageBubble.tsx` shows a fixed-size (192x192) thumbnail for image attachments,
+cropped via `object-cover` -- deliberately *not* just a `max-height`/`max-width` cap, since a
+source image smaller than the box would otherwise render at its native pixel size (a real bug
+caught during Playwright verification with a 1x1 test image). Clicking it opens a full-size
+lightbox (`Dialog`, no new library) constrained to `85vh`/`85vw` with `object-contain`.
+
 ## Data shapes (implemented -- see supabase/functions/api/dtos/communication/inbox.dtos.ts)
 
 ```ts
@@ -172,6 +212,9 @@ interface ConversationEventDTO {
       Chatiox rule) -- free text disabled outside the window pending template support
 - [x] Frontend: API client, hooks, `InboxPage` (conversation list, thread view, composer,
       assignment, contact linking)
+- [x] Media (images): `POST /conversations/:id/attachments` upload endpoint,
+      `MetaGraphClient.uploadMedia/getMediaUrl/sendMedia`, `IChannelProvider.
+      resolveMediaForDownload?`, signed-URL enrichment, thumbnail + lightbox viewer
 - [ ] Conversation-scoped notes UI (`conversation_notes` -- backend already supports this;
       deferred, not part of this pass's explicit scope)
 - [ ] Real Supabase Realtime subscriptions (currently a ~5s poll via `refetchInterval`)
@@ -186,3 +229,7 @@ interface ConversationEventDTO {
 - **Multi-agent watchers** -- `conversation_participants` already supports this shape, but no
   dedicated endpoints/UI exist this pass (single `assigned_to_user_id` is all the Service layer
   exposes today).
+- **Documents/Audio/Video attachments** -- same plumbing as images (upload endpoint, signed URLs,
+  `AttachmentKind`), just new MIME-type branches in `validateAttachment`/`MetaWhatsAppProvider`
+  and new renderers in `MessageBubble.tsx`; not a new pipeline. Also deferred: captions,
+  drag-and-drop/clipboard paste, upload progress/retry.

@@ -46,8 +46,23 @@ export const sendMessageSchema = z.object({
       variables: z.array(z.string()).optional(),
     })
     .optional(),
-}).refine((data) => Boolean(data.text?.trim()) || Boolean(data.template), {
-  message: 'Either text or a template is required',
+  // Collection-shaped even though WhatsApp only allows one today -- Email/Messenger/future
+  // multi-attachment channels won't need this schema to change later. The cap is an explicit,
+  // visible WhatsApp-specific validation here, not an assumption baked into the shape.
+  attachments: z
+    .array(
+      z.object({
+        storagePath: z.string().min(1),
+        providerMediaId: z.string().min(1),
+        contentType: z.string().min(1),
+        filename: z.string().optional(),
+        fileSizeBytes: z.number().optional(),
+      }),
+    )
+    .max(1, 'Only one attachment is supported per message right now')
+    .optional(),
+}).refine((data) => Boolean(data.text?.trim()) || Boolean(data.template) || Boolean(data.attachments?.length), {
+  message: 'Either text, a template, or an attachment is required',
   path: ['text'],
 })
 export type SendMessageInput = z.infer<typeof sendMessageSchema>
